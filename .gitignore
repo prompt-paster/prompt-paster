@@ -55,6 +55,11 @@ cover/
 *.mo
 *.pot
 
+# Swift / Xcode
+.build/
+DerivedData/
+*.xcuserdata/
+
 # Django stuff:
 *.log
 local_settings.py
