@@ -1,30 +1,44 @@
 import Foundation
 
+struct PromptCategoryFilter: Equatable, Hashable, Identifiable {
+    static let all = PromptCategoryFilter(id: "__all__", title: "All")
+
+    let id: String
+    let title: String
+}
+
 struct PromptSearch {
     static let allCategory = "All"
 
-    static func categories(for prompts: [Prompt]) -> [String] {
-        let categories = prompts.compactMap { prompt in
+    static func categories(for prompts: [Prompt]) -> [PromptCategoryFilter] {
+        let categoriesByID = prompts.reduce(into: [String: String]()) { partialResult, prompt in
             let trimmed = prompt.category?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed?.isEmpty == false ? trimmed : nil
+            guard let trimmed, !trimmed.isEmpty else {
+                return
+            }
+            let id = categoryID(for: trimmed)
+            if partialResult[id] == nil {
+                partialResult[id] = trimmed
+            }
         }
 
-        return [allCategory] + Array(Set(categories)).sorted {
-            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-        }
+        let categories = categoriesByID
+            .map { PromptCategoryFilter(id: $0.key, title: $0.value) }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+
+        return [.all] + categories
     }
 
     static func filteredPrompts(
         _ prompts: [Prompt],
         query: String,
-        category: String
+        categoryID selectedCategoryID: String
     ) -> [Prompt] {
         let normalizedQuery = normalize(query)
-        let normalizedCategory = normalize(category)
 
         return prompts.filter { prompt in
-            let matchesCategory = normalizedCategory == normalize(allCategory)
-                || normalize(prompt.category ?? "") == normalizedCategory
+            let matchesCategory = selectedCategoryID == PromptCategoryFilter.all.id
+                || categoryID(for: prompt.category ?? "") == selectedCategoryID
             guard matchesCategory else {
                 return false
             }
@@ -54,5 +68,9 @@ struct PromptSearch {
             .lowercased()
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: " ")
+    }
+
+    private static func categoryID(for value: String) -> String {
+        normalize(value)
     }
 }

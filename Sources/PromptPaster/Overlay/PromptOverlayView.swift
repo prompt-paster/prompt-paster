@@ -7,7 +7,7 @@ struct PromptOverlayView: View {
     let close: () -> Void
 
     @State private var query = ""
-    @State private var selectedCategory = PromptSearch.allCategory
+    @State private var selectedCategoryID = PromptCategoryFilter.all.id
     @State private var selectedPromptID: Prompt.ID?
     @State private var acknowledgement: String?
     @FocusState private var isSearchFocused: Bool
@@ -16,12 +16,16 @@ struct PromptOverlayView: View {
         promptStore.library?.prompts ?? []
     }
 
-    private var categories: [String] {
+    private var categories: [PromptCategoryFilter] {
         PromptSearch.categories(for: prompts)
     }
 
     private var visiblePrompts: [Prompt] {
-        PromptSearch.filteredPrompts(prompts, query: query, category: selectedCategory)
+        PromptOverlayState.visiblePrompts(
+            prompts: prompts,
+            query: query,
+            selectedCategoryID: selectedCategoryID
+        )
     }
 
     private var selectedIndex: Int? {
@@ -54,31 +58,27 @@ struct PromptOverlayView: View {
             }
             .padding(22)
         }
+        .background(
+            OverlayKeyCaptureView(handleKeyDown: handleKeyDown)
+                .frame(width: 0, height: 0)
+        )
         .padding(1)
         .frame(minWidth: 760, minHeight: 480)
         .onAppear {
-            selectedCategory = PromptSearch.allCategory
-            selectFirstVisiblePrompt()
+            selectedCategoryID = PromptCategoryFilter.all.id
+            keepCategoryVisible()
+            keepSelectionVisible()
             isSearchFocused = true
         }
         .onChange(of: query) { _, _ in
             keepSelectionVisible()
         }
-        .onChange(of: selectedCategory) { _, _ in
+        .onChange(of: selectedCategoryID) { _, _ in
             keepSelectionVisible()
         }
         .onChange(of: prompts) { _, _ in
+            keepCategoryVisible()
             keepSelectionVisible()
-        }
-        .onExitCommand(perform: close)
-        .onMoveCommand(perform: handleMoveCommand)
-        .onSubmit(selectCurrentPrompt)
-        .onKeyPress(.return) {
-            selectCurrentPrompt()
-            return .handled
-        }
-        .onKeyPress(characters: .decimalDigits) { keyPress in
-            handleDigitShortcut(keyPress.characters)
         }
     }
 
@@ -109,17 +109,17 @@ struct PromptOverlayView: View {
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(categories, id: \.self) { category in
+                ForEach(categories) { category in
                     Button {
-                        selectedCategory = category
+                        selectedCategoryID = category.id
                     } label: {
-                        Text(category)
+                        Text(category.title)
                             .font(.callout.weight(.medium))
                             .padding(.horizontal, 11)
                             .padding(.vertical, 7)
-                            .foregroundStyle(selectedCategory == category ? .primary : .secondary)
+                            .foregroundStyle(selectedCategoryID == category.id ? .primary : .secondary)
                             .background(
-                                chipBackgroundStyle(isSelected: selectedCategory == category),
+                                chipBackgroundStyle(isSelected: selectedCategoryID == category.id),
                                 in: Capsule()
                             )
                     }
@@ -150,36 +150,24 @@ struct PromptOverlayView: View {
     }
 
     private var statusMessages: [String] {
-        var messages: [String] = []
-
-        if let message, !message.isEmpty {
-            messages.append(message)
-        }
-
-        if let lastErrorMessage = promptStore.lastErrorMessage {
-            messages.append("Library reload error: \(lastErrorMessage)")
-        } else if let validation = promptStore.validation, !validation.warnings.isEmpty {
-            messages.append("Library loaded with \(validation.warnings.count) warning\(validation.warnings.count == 1 ? "" : "s").")
-        }
-
-        if let acknowledgement {
-            messages.append(acknowledgement)
-        }
-
-        return messages
+        PromptOverlayState.statusMessages(
+            message: message,
+            validation: promptStore.lastErrorMessage == nil ? promptStore.validation : nil,
+            acknowledgement: acknowledgement
+        )
     }
 
     @ViewBuilder
     private var resultArea: some View {
-        if prompts.isEmpty {
+        if let emptyState = PromptOverlayState.emptyState(
+            prompts: prompts,
+            visiblePrompts: visiblePrompts,
+            query: query,
+            lastErrorMessage: promptStore.lastErrorMessage
+        ) {
             OverlayEmptyState(
-                title: "No prompts loaded",
-                detail: "Use Reload Library from the menu after adding prompts to prompts.json."
-            )
-        } else if visiblePrompts.isEmpty {
-            OverlayEmptyState(
-                title: "No search results",
-                detail: "Try a different title, category, tag, or body term."
+                title: emptyState.title,
+                detail: emptyState.detail
             )
         } else {
             ScrollView {
@@ -201,31 +189,34 @@ struct PromptOverlayView: View {
         }
     }
 
-    private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        switch direction {
-        case .up:
-            moveSelection(by: -1)
-        case .down:
+    private func handleKeyDown(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else {
+            return false
+        }
+
+        switch event.keyCode {
+        case 53:
+            close()
+            return true
+        case 36, 76:
+            selectCurrentPrompt()
+            return true
+        case 125:
             moveSelection(by: 1)
-        case .left, .right:
-            break
-        @unknown default:
-            break
-        }
-    }
+            return true
+        case 126:
+            moveSelection(by: -1)
+            return true
+        default:
+            guard let digit = event.charactersIgnoringModifiers.flatMap(Int.init),
+                  (1...9).contains(digit)
+            else {
+                return false
+            }
 
-    private func handleDigitShortcut(_ characters: String) -> KeyPress.Result {
-        guard let digit = Int(characters), (1...9).contains(digit) else {
-            return .ignored
+            selectPrompt(at: digit - 1)
+            return true
         }
-
-        let index = digit - 1
-        guard visiblePrompts.indices.contains(index) else {
-            return .handled
-        }
-
-        selectPrompt(at: index)
-        return .handled
     }
 
     private func chipBackgroundStyle(isSelected: Bool) -> AnyShapeStyle {
@@ -235,33 +226,26 @@ struct PromptOverlayView: View {
     }
 
     private func moveSelection(by offset: Int) {
-        guard !visiblePrompts.isEmpty else {
-            selectedPromptID = nil
-            return
-        }
-
-        let currentIndex = selectedIndex ?? 0
-        let nextIndex = min(max(currentIndex + offset, 0), visiblePrompts.count - 1)
-        selectedPromptID = visiblePrompts[nextIndex].id
+        selectedPromptID = PromptOverlayState.selectedPromptIDMoving(
+            currentID: selectedPromptID,
+            visiblePrompts: visiblePrompts,
+            offset: offset
+        )
         acknowledgement = nil
     }
 
-    private func keepSelectionVisible() {
-        guard !visiblePrompts.isEmpty else {
-            selectedPromptID = nil
-            acknowledgement = nil
+    private func keepCategoryVisible() {
+        if categories.contains(where: { $0.id == selectedCategoryID }) {
             return
         }
-
-        if let selectedPromptID, visiblePrompts.contains(where: { $0.id == selectedPromptID }) {
-            return
-        }
-
-        selectFirstVisiblePrompt()
+        selectedCategoryID = PromptCategoryFilter.all.id
     }
 
-    private func selectFirstVisiblePrompt() {
-        selectedPromptID = visiblePrompts.first?.id
+    private func keepSelectionVisible() {
+        selectedPromptID = PromptOverlayState.selectedPromptIDKeepingVisible(
+            currentID: selectedPromptID,
+            visiblePrompts: visiblePrompts
+        )
         acknowledgement = nil
     }
 
@@ -313,7 +297,7 @@ private struct PromptRowView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if !prompt.tags.isEmpty {
-                    HStack(spacing: 6) {
+                    FlowLayout(spacing: 6, lineSpacing: 6) {
                         ForEach(Array(prompt.tags.prefix(5).enumerated()), id: \.offset) { _, tag in
                             Text(tag)
                                 .font(.caption)
@@ -361,6 +345,61 @@ private struct PromptRowView: View {
         isSelected
             ? AnyShapeStyle(Color.accentColor.opacity(0.65))
             : AnyShapeStyle(Color(nsColor: .separatorColor).opacity(0.35))
+    }
+}
+
+private struct FlowLayout: Layout {
+    let spacing: CGFloat
+    let lineSpacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Void
+    ) -> CGSize {
+        arrangeSubviews(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Void
+    ) {
+        let arrangement = arrangeSubviews(proposal: proposal, subviews: subviews)
+        for (index, origin) in arrangement.origins.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func arrangeSubviews(
+        proposal: ProposedViewSize,
+        subviews: Subviews
+    ) -> (origins: [CGPoint], size: CGSize) {
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+        var origins: [CGPoint] = []
+        var cursor = CGPoint.zero
+        var lineHeight: CGFloat = 0
+        var usedWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if cursor.x > 0, cursor.x + size.width > maxWidth {
+                cursor.x = 0
+                cursor.y += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+
+            origins.append(cursor)
+            cursor.x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+            usedWidth = max(usedWidth, cursor.x - spacing)
+        }
+
+        return (origins, CGSize(width: usedWidth, height: cursor.y + lineHeight))
     }
 }
 
