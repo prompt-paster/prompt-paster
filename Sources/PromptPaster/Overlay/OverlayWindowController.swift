@@ -4,12 +4,14 @@ import SwiftUI
 @MainActor
 final class OverlayWindowController {
     private var panel: NSPanel?
+    private var previouslyActiveApplication: NSRunningApplication?
 
     func show(message: String? = nil) {
         let panel = panel ?? makePanel()
         self.panel = panel
+        previouslyActiveApplication = NSWorkspace.shared.frontmostApplication
 
-        let activeScreen = NSScreen.main ?? NSScreen.screens.first
+        let activeScreen = screenContainingMouse() ?? NSScreen.main ?? NSScreen.screens.first
         let visibleFrame = activeScreen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
         let width = visibleFrame.width * 0.8
         let height = visibleFrame.height * 0.8
@@ -30,10 +32,12 @@ final class OverlayWindowController {
 
     func hide() {
         panel?.orderOut(nil)
+        previouslyActiveApplication?.activate()
+        previouslyActiveApplication = nil
     }
 
     private func makePanel() -> NSPanel {
-        let panel = NSPanel(
+        let panel = OverlayPanel(
             contentRect: .zero,
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
@@ -48,5 +52,22 @@ final class OverlayWindowController {
         panel.titlebarAppearsTransparent = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         return panel
+    }
+
+    private func screenContainingMouse() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first { screen in
+            screen.frame.contains(mouseLocation)
+        }
+    }
+}
+
+private final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
     }
 }

@@ -32,7 +32,25 @@ swift run PromptPaster
 The app appears in the macOS menu bar. Use the menu-bar item to open the
 placeholder overlay or settings window.
 
+## Build an App Bundle
+
+To build a local `.app` bundle:
+
+```bash
+scripts/build-app.sh
+```
+
+The script creates:
+
+```text
+dist/Prompt Paster.app
+```
+
+The bundle uses `LSUIElement`, so it behaves as a hidden menu-bar utility rather
+than a normal Dock app.
+
 ## Planning Docs
 
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [Review recommendations](docs/review-recommendations.md)
