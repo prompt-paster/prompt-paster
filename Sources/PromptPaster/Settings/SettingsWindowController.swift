@@ -4,6 +4,11 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController {
     private var window: NSWindow?
+    private let promptStore: PromptStore
+
+    init(promptStore: PromptStore) {
+        self.promptStore = promptStore
+    }
 
     func show() {
         let window = window ?? makeWindow()
@@ -22,7 +27,7 @@ final class SettingsWindowController {
         )
         window.title = "Prompt Paster Settings"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView())
+        window.contentView = NSHostingView(rootView: SettingsView(promptStore: promptStore))
         return window
     }
 }

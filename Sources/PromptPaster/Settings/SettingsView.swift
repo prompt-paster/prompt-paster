@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @ObservedObject var promptStore: PromptStore
+
     var body: some View {
         Form {
             Section("Trigger") {
@@ -9,8 +11,24 @@ struct SettingsView: View {
             }
 
             Section("Prompt Library") {
-                LabeledContent("Storage", value: "Planned for PROMPTS-1")
-                LabeledContent("Reload", value: "Available after storage lands")
+                LabeledContent("Storage", value: promptStore.libraryURL.path)
+                LabeledContent("Loaded prompts", value: "\(promptStore.library?.prompts.count ?? 0)")
+
+                if let lastErrorMessage = promptStore.lastErrorMessage {
+                    Text(lastErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+
+                HStack {
+                    Button("Open Prompt Library") {
+                        promptStore.openLibraryFile()
+                    }
+
+                    Button("Reload Library") {
+                        promptStore.reload()
+                    }
+                }
             }
 
             Section("App") {

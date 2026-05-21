@@ -15,7 +15,14 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "PromptPaster"
+            name: "PromptPaster",
+            resources: [
+                .process("Resources")
+            ]
+        ),
+        .testTarget(
+            name: "PromptPasterTests",
+            dependencies: ["PromptPaster"]
         )
     ]
 )
