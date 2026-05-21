@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "prompts": [
+    {
+      "id": "wait-ci-ready-merge",
+      "title": "Wait CI + Merge Check",
+      "category": "PR",
+      "body": "Wait until CI has completed. Inspect any failures before acting. If all required checks pass and the PR is ready, report the merge readiness status and call out any remaining blockers.",
+      "shortcut": "1",
+      "tags": ["ci", "merge", "pr", "checks"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "pr-ready-review-squash-merge",
+      "title": "PR Ready Review + Squash Merge",
+      "category": "PR",
+      "body": "Review the PR for correctness, scope, tests, and documentation. If it is ready, squash merge it with a concise commit title and body. If it is not ready, summarize the exact blockers.",
+      "shortcut": "2",
+      "tags": ["pr", "review", "merge"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "run-yourself-next-steps",
+      "title": "Run Yourself + Recommend Next Steps",
+      "category": "Delegation",
+      "body": "Run the necessary local checks yourself. Do not stop at suggestions if the action can be completed safely. When finished, recommend the next concrete steps and identify any risks that remain.",
+      "shortcut": "3",
+      "tags": ["delegation", "validation", "next"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "new-agent-handoff",
+      "title": "New Agent Handoff",
+      "category": "Handoff",
+      "body": "Prepare a handoff for a new agent thread. Include the goal, current branch, relevant files, commands already run, validation results, known blockers, and the next action to take.",
+      "shortcut": "4",
+      "tags": ["handoff", "agent", "context"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "adanim-knowledge-wiki-contribution",
+      "title": "Adanim Knowledge Wiki Contribution",
+      "category": "Docs",
+      "body": "Contribute the learned implementation context to the Adanim knowledge wiki. Keep it factual, source-linked where possible, and focused on reusable technical knowledge rather than transient status.",
+      "shortcut": "5",
+      "tags": ["wiki", "docs", "knowledge"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "general-go-waiting-handoff",
+      "title": "General Go-Waiting Handoff",
+      "category": "Handoff",
+      "body": "Continue from the current state once the pending external step completes. First verify the latest state, then proceed with the remaining implementation or review work without repeating completed steps.",
+      "shortcut": "6",
+      "tags": ["handoff", "waiting", "resume"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "squash-merge-next-plan",
+      "title": "Squash Merge + Next Plan",
+      "category": "PR",
+      "body": "If the PR is approved and checks are green, squash merge it. After merging, update local main, delete the branch if appropriate, and propose the next implementation slice.",
+      "shortcut": "7",
+      "tags": ["merge", "planning", "pr"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "self-review",
+      "title": "Self Review",
+      "category": "Review",
+      "body": "Review your own changes as if you were reviewing someone else's PR. Prioritize correctness bugs, regressions, missing tests, confusing APIs, and scope creep. Fix issues you can safely fix.",
+      "shortcut": "8",
+      "tags": ["review", "quality", "tests"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "manual-pr-review-handling",
+      "title": "Manual PR Review Handling",
+      "category": "Review",
+      "body": "Read the PR review comments and separate actionable requests from discussion. Implement the accepted fixes, explain any declined suggestions, and update the PR with validation evidence.",
+      "shortcut": "9",
+      "tags": ["review", "comments", "github"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "delegation-setup",
+      "title": "Delegation Setup",
+      "category": "Delegation",
+      "body": "Break this work into concrete subtasks that can run independently. Assign each task clear ownership, expected output, files or areas to inspect, and any constraints needed to avoid conflicts.",
+      "tags": ["delegation", "parallel", "planning"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "feedback-intake",
+      "title": "Feedback Intake",
+      "category": "Feedback",
+      "body": "Process the feedback carefully. Identify the requested behavior change, check whether it conflicts with existing requirements, implement the smallest correct fix, and report validation.",
+      "tags": ["feedback", "fix", "validation"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "agents-directory-bootstrap",
+      "title": "Agents Directory Bootstrap",
+      "category": "Bootstrap",
+      "body": "Bootstrap the agents directory for this repository. Inspect existing instructions, create or update agent-facing files only where needed, and keep repository-specific guidance concise and actionable.",
+      "tags": ["agents", "bootstrap", "repo"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "tech-wiki-intro",
+      "title": "Tech Wiki Intro",
+      "category": "Docs",
+      "body": "Write a technical wiki introduction for this project. Cover purpose, architecture, setup, key workflows, testing, release process, and links to source documents or code owners where known.",
+      "tags": ["wiki", "docs", "intro"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "planning-pr-notation",
+      "title": "Planning + PR Notation",
+      "category": "System",
+      "body": "Use the planning notation from the implementation plan. Keep the PR title in the form '<notation>: <summary>' and include planning notation, parent milestone, source, scope, validation, and follow-up in the PR body.",
+      "tags": ["planning", "pr", "notation"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "semi-auto-pr-loop",
+      "title": "Semi-Auto PR Loop",
+      "category": "PR",
+      "body": "Drive the PR toward readiness. Check status, inspect failures, make focused fixes, rerun validation, push updates, and report only when the PR is ready for human review or blocked.",
+      "tags": ["pr", "ci", "loop"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "hands-off-pr-loop",
+      "title": "Hands-Off PR Loop",
+      "category": "PR",
+      "body": "Continue working until the PR is ready without requiring step-by-step approval for safe, in-scope fixes. Preserve unrelated user changes and stop only for destructive actions or unclear product decisions.",
+      "tags": ["pr", "automation", "handoff"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "pr-labeling",
+      "title": "PR Labeling",
+      "category": "PR",
+      "body": "Inspect available repository labels and apply the labels that best match this PR's scope. Prefer specific labels over broad ones and do not create new labels unless explicitly asked.",
+      "tags": ["pr", "labels", "github"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "bootstrap-pr-labeling",
+      "title": "Bootstrap PR Labeling",
+      "category": "Bootstrap",
+      "body": "Set up PR labels for a new repository if labels are missing. Use a small, conventional label set for type, area, and priority, then apply the appropriate labels to the current PR.",
+      "tags": ["bootstrap", "labels", "github"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "open-pr",
+      "title": "Open PR",
+      "category": "PR",
+      "body": "Open a non-draft PR for the current branch. Use a detailed body with summary, planning notation if applicable, validation, scope boundaries, risks, and follow-up. Apply relevant labels and milestone if one exists.",
+      "tags": ["pr", "github", "handoff"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "release-pr",
+      "title": "Release PR",
+      "category": "Release",
+      "body": "Prepare a release PR. Confirm version changes, changelog or release notes, packaging impact, validation, and migration notes. Keep unrelated cleanup out of scope.",
+      "tags": ["release", "pr", "version"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "release-tag",
+      "title": "Release Tag",
+      "category": "Release",
+      "body": "Create the release tag only after the release commit is merged and validation is complete. Use the repository's versioning convention and include concise release notes.",
+      "tags": ["release", "tag", "version"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "add-pr-agent-context",
+      "title": "Add pr-agent-context",
+      "category": "System",
+      "body": "Add or update pr-agent-context for this repository. Capture how to run tests, build, inspect PRs, handle labels and milestones, and avoid repository-specific pitfalls.",
+      "tags": ["agents", "context", "pr"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "init-agent-files-in-repo",
+      "title": "Init Agent Files In Repo",
+      "category": "Bootstrap",
+      "body": "Initialize agent files in this repository. Read existing contribution docs first, add only useful guidance, and make the files easy for future agents to follow.",
+      "tags": ["agents", "bootstrap", "repo"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "next-on-plan",
+      "title": "Next On Plan",
+      "category": "Planning",
+      "body": "Inspect the implementation plan and identify the next incomplete slice. Confirm dependencies, scope boundaries, validation requirements, and the PR title before starting.",
+      "tags": ["planning", "next", "scope"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "merge-clean-back-to-main",
+      "title": "Merge Clean Back To Main",
+      "category": "PR",
+      "body": "After merge, return to main, pull the latest remote state, verify the branch is clean, and delete the completed local branch when appropriate.",
+      "tags": ["merge", "main", "cleanup"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "self-review-research",
+      "title": "Self Review Research",
+      "category": "Review",
+      "body": "Research the implementation against primary sources where needed, then self-review the code for correctness, edge cases, API usage, and test coverage. Apply focused fixes.",
+      "tags": ["review", "research", "quality"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "heocr-wiki-contribution",
+      "title": "HeOCR Wiki Contribution",
+      "category": "Docs",
+      "body": "Contribute useful HeOCR project knowledge to the wiki. Keep entries concise, operationally useful, and grounded in repository facts or verified behavior.",
+      "tags": ["heocr", "wiki", "docs"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    },
+    {
+      "id": "screen-capture-hygiene",
+      "title": "Screen Capture Hygiene",
+      "category": "System",
+      "body": "When using screen capture or browser automation, avoid exposing private content unnecessarily. Capture only the needed window or region and summarize sensitive details instead of reproducing them.",
+      "tags": ["privacy", "screen", "hygiene"],
+      "updatedAt": "2026-05-21T00:00:00Z"
+    }
+  ]
+}

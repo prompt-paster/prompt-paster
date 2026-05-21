@@ -4,11 +4,13 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
+    private let promptStore = PromptStore()
     private let overlayController = OverlayWindowController()
-    private let settingsController = SettingsWindowController()
+    private lazy var settingsController = SettingsWindowController(promptStore: promptStore)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        promptStore.load()
         configureStatusItem()
     }
 
@@ -38,6 +40,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
+            withTitle: "Open Prompt Library",
+            action: #selector(openPromptLibrary),
+            keyEquivalent: "o"
+        )
+        menu.addItem(
             withTitle: "Reload Library",
             action: #selector(reloadLibrary),
             keyEquivalent: "r"
@@ -64,8 +71,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsController.show()
     }
 
+    @objc private func openPromptLibrary() {
+        do {
+            let libraryURL = try promptStore.prepareLibraryFile()
+            NSWorkspace.shared.open(libraryURL)
+        } catch {
+            promptStore.recordError(error)
+            overlayController.show(message: "Could not open prompt library. \(error.localizedDescription)")
+        }
+    }
+
     @objc private func reloadLibrary() {
-        overlayController.show(message: "Prompt library reloading lands in PROMPTS-1.")
+        let result = promptStore.reload()
+        if let errorMessage = result.errorMessage {
+            overlayController.show(message: "Reload failed. Keeping last valid library. \(errorMessage)")
+        } else {
+            let promptCount = result.library?.prompts.count ?? 0
+            overlayController.show(message: "Reloaded \(promptCount) prompts.")
+        }
     }
 
     @objc private func quit() {
