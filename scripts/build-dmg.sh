@@ -59,6 +59,15 @@ hdiutil create \
     -format UDZO \
     "$DMG_PATH" >/dev/null
 
+if [ -n "$CODESIGN_IDENTITY" ]; then
+    codesign \
+        --force \
+        --timestamp \
+        --sign "$CODESIGN_IDENTITY" \
+        "$DMG_PATH"
+    codesign --verify --verbose=2 "$DMG_PATH"
+fi
+
 if [ "$NOTARIZE" = "1" ]; then
     if [ -z "${APPLE_ID:-}" ] || [ -z "${APPLE_TEAM_ID:-}" ] || [ -z "${APP_SPECIFIC_PASSWORD:-}" ]; then
         echo "NOTARIZE=1 requires APPLE_ID, APPLE_TEAM_ID, and APP_SPECIFIC_PASSWORD." >&2

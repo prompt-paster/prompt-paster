@@ -124,10 +124,11 @@ NOTARIZE=1 \
 scripts/build-dmg.sh
 ```
 
-The signing path uses hardened runtime options and `Packaging/Entitlements.plist`.
-The entitlements file is intentionally empty for now because Prompt Paster is a
-local clipboard/menu-bar app with no sandbox, network, or Apple Events
-requirements.
+The signing path signs the app bundle with hardened runtime options, then signs
+the generated DMG container before optional notarization. The app signing step
+uses `Packaging/Entitlements.plist`. The entitlements file is intentionally
+empty for now because Prompt Paster is a local clipboard/menu-bar app with no
+sandbox, network, or Apple Events requirements.
 
 When `NOTARIZE=1` is set, `CODESIGN_IDENTITY` is required and the script fails
 before building if it is missing.
