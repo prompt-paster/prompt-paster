@@ -22,6 +22,7 @@ Sources/PromptPaster/
     PromptLibraryCoding.swift
     PromptSearch.swift
     PromptStore.swift
+    SettingsStore.swift
   Overlay/
     PromptOverlayActions.swift
     OverlayKeyCaptureView.swift
@@ -54,6 +55,7 @@ scripts/
 - Overlay UI and keyboard selection state: `Sources/PromptPaster/Overlay/PromptOverlayView.swift`
 - Pure overlay state helpers: `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
 - Fallback global hotkey registration: `Sources/PromptPaster/Services/HotkeyController.swift`
+- Persisted preferences and launch-at-login state: `Sources/PromptPaster/Services/SettingsStore.swift`
 
 ## Data Model and Storage
 
@@ -73,6 +75,8 @@ Default user library path:
 
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
 - Fallback global hotkey: `Control + Option + Space` through `HotkeyController`.
+- Trigger mode, double-Control timing, and launch-at-login state are managed by
+  `SettingsStore`.
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse, search, filter, navigate, copy selected prompts,
   close after successful copy, and keep the overlay open on clipboard failure.
@@ -80,6 +84,7 @@ Default user library path:
 ## Configuration and Packaging
 
 - SwiftPM configuration: `Package.swift`
+- User preferences and login-item integration: `Sources/PromptPaster/Services/SettingsStore.swift`
 - App bundle metadata: `Packaging/Info.plist`
 - Local `.app` builder: `scripts/build-app.sh`
 - Build output is ignored under `.build/` and `dist/`.

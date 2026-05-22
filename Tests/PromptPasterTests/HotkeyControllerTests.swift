@@ -10,7 +10,7 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(HotkeyShortcut.controlOptionSpace.displayName, "Control + Option + Space")
         XCTAssertEqual(HotkeyDisplay.fallbackShortcut, "Control + Option + Space")
         XCTAssertEqual(HotkeyDisplay.doubleControlShortcut, "Double Control")
-        XCTAssertEqual(HotkeyDisplay.doubleControlThreshold, "350 ms")
+        XCTAssertEqual(HotkeyDisplay.doubleControlThreshold(350), "350 ms")
     }
 
     func testTriggerRouterForwardsHotkeyTriggerToHandler() {
@@ -40,6 +40,25 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(registrar.registeredShortcut, .controlOptionSpace)
         XCTAssertEqual(monitor.startCount, 1)
         XCTAssertEqual(status.doubleControlStatus, .active)
+    }
+
+    func testFallbackOnlyModeRegistersHotkeyWithoutStartingDoubleControlMonitor() throws {
+        let registrar = FakeHotkeyRegistrar()
+        let monitor = FakeDoubleControlMonitor()
+        let controller = HotkeyController(
+            triggerMode: .fallbackHotkeyOnly,
+            handler: FakeHotkeyHandler(),
+            registrar: AnyHotkeyRegistrar(registrar),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(isAccessibilityTrusted: true)
+        )
+
+        let status = try controller.start()
+
+        XCTAssertEqual(registrar.registerHotkeyCount, 1)
+        XCTAssertEqual(monitor.startCount, 0)
+        XCTAssertEqual(monitor.stopCount, 1)
+        XCTAssertEqual(status.doubleControlStatus, .disabled)
     }
 
     func testStartIsIdempotentWhileRegistered() throws {
@@ -190,6 +209,33 @@ final class HotkeyControllerTests: XCTestCase {
         monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.05))
         monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.20))
         monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.25))
+
+        XCTAssertEqual(handler.triggerCount, 1)
+    }
+
+    func testUpdatingDoubleControlConfigurationResetsDetectorWithNewThreshold() throws {
+        let handler = FakeHotkeyHandler()
+        let monitor = FakeDoubleControlMonitor()
+        let controller = HotkeyController(
+            handler: handler,
+            registrar: AnyHotkeyRegistrar(FakeHotkeyRegistrar()),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(isAccessibilityTrusted: true),
+            doubleControlConfiguration: DoubleControlTapConfiguration(
+                tapThreshold: 0.25,
+                debounceInterval: 0.45
+            )
+        )
+
+        try controller.start()
+        controller.updateDoubleControlConfiguration(DoubleControlTapConfiguration(
+            tapThreshold: 0.50,
+            debounceInterval: 0.45
+        ))
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.0))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.05))
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.45))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.50))
 
         XCTAssertEqual(handler.triggerCount, 1)
     }
