@@ -466,3 +466,157 @@ Recommended approach:
 The planned v1 implementation sequence is complete after `PACKAGING-1`.
 Additional PRs should come from fresh release QA, user feedback, or a new
 planning pass rather than continuing this initial sequence by default.
+
+## Post-v1 Feedback Roadmap
+
+This roadmap captures manual QA feedback after the first usable release build.
+Keep these as small reviewable slices; do not combine layout, shortcut
+semantics, ordering, and editing into one large PR.
+
+### `UI-QA-1`: Make menu-bar icon reliably visible
+
+Goal: make Prompt Paster discoverable as a menu-bar utility.
+
+Tasks:
+
+- Replace or adjust the current status-item symbol so the menu-bar icon is
+  clearly visible in common light and dark menu bars.
+- Keep it template-safe for macOS menu-bar rendering.
+- Preserve status-item menu actions.
+- Add a fallback title or tooltip if it improves discoverability without adding
+  visible clutter.
+
+Validation:
+
+- Installed app shows a visible menu-bar icon.
+- Icon remains visible in dark and light mode.
+- Menu opens from the icon.
+- Fallback hotkey and double-Control still open the overlay.
+
+### `PREFS-2`: Add overlay display preferences
+
+Goal: make overlay sizing and prompt preview density user-configurable.
+
+Tasks:
+
+- Add overlay size settings:
+  - percentage of active display
+  - optional fixed pixel width/height mode if practical
+- Add configurable maximum prompt preview characters.
+- Persist settings in `SettingsStore`.
+- Apply settings when opening the overlay.
+- Keep safe minimum and maximum bounds so the overlay cannot become unusable.
+
+Validation:
+
+- Settings persist across relaunch.
+- Overlay opens at the configured size.
+- Preview text length changes without breaking row/card layout.
+- Invalid or old preference values clamp to safe defaults.
+
+### `LAYOUT-1`: Replace full-width rows with smart prompt cards
+
+Goal: improve scanning by using variable-sized rectangular cards rather than
+full-width rows.
+
+Tasks:
+
+- Introduce a card/grid layout that adapts to overlay size and content.
+- Size cards based on prompt metadata and preview length while preserving a
+  stable, predictable scan order.
+- Keep category chips, search, selected state, empty/error states, and copy
+  behavior.
+- Avoid layout jumps while typing.
+- Preserve keyboard navigation and visible shortcut badges.
+
+Validation:
+
+- Cards fit without overlapping at small and large overlay sizes.
+- Long titles, tags, and previews remain readable.
+- Search filtering does not produce jarring reshuffles beyond the expected
+  result-set change.
+- Pointer and keyboard selection still copy and close.
+
+### `SHORTCUTS-1`: Add spatial letter shortcut assignment
+
+Goal: make selection shortcuts faster than number keys by default.
+
+Tasks:
+
+- Default visible prompt shortcuts to center-keyboard letters.
+- Assign letters roughly by card position and keyboard geography:
+  - center/right cards prefer keys such as `j` and `k`
+  - center/top cards prefer keys such as `t` and `y`
+  - nearby cards should get nearby keys where practical
+- Add a Settings option to switch shortcut badges back to numeric `1`-`9`.
+- Keep shortcut assignment deterministic for a given visible layout.
+- Avoid stealing normal text input while the search field is active except for
+  deliberate shortcut handling.
+
+Validation:
+
+- Visible badges match the keys that select prompts.
+- Shortcut mapping tracks card position predictably.
+- Numeric mode restores current `1`-`9` behavior.
+- Search typing still works normally.
+
+### `ORDERING-1`: Add configurable ordering and usage ranking
+
+Goal: let users control prompt order globally and per category, with optional
+frequency-based ranking.
+
+Tasks:
+
+- Add local usage statistics keyed by prompt ID:
+  - copy count
+  - last copied timestamp
+- Add configurable global ordering.
+- Add configurable per-category ordering.
+- Add an option to sort by use frequency by default.
+- Define how manual ordering, search relevance, category filtering, and usage
+  ranking interact.
+- Keep usage stats local and out of the seed prompt file unless explicitly
+  exported later.
+
+Validation:
+
+- Copying prompts updates local usage stats.
+- Frequency sort changes ordering predictably.
+- Manual order remains stable when frequency sorting is disabled.
+- Search ranking remains understandable when usage sorting is enabled.
+
+### `LIBRARY-UI-1`: Add prompt library manager
+
+Goal: provide a proper UI for viewing, searching, and editing the prompt
+library instead of requiring JSON edits.
+
+Tasks:
+
+- Add a library manager window.
+- List prompts with search and category/tag filtering.
+- Allow editing:
+  - title
+  - body
+  - category
+  - tags
+  - ordering metadata if introduced by `ORDERING-1`
+- Validate before saving and show recoverable errors.
+- Preserve JSON compatibility with existing `prompts.json`.
+- Keep direct file open/reload actions available for advanced users.
+
+Validation:
+
+- Edits persist to the prompt library file.
+- Invalid edits are blocked with clear errors.
+- Reload keeps the last valid library when saved JSON is invalid.
+- Overlay reflects saved library changes after reload.
+
+## Post-v1 Suggested PR Sequence
+
+1. `ROADMAP-1`: Add post-v1 feedback roadmap.
+2. `UI-QA-1`: Make menu-bar icon reliably visible.
+3. `PREFS-2`: Add overlay display preferences.
+4. `LAYOUT-1`: Replace full-width rows with smart prompt cards.
+5. `SHORTCUTS-1`: Add spatial letter shortcut assignment.
+6. `ORDERING-1`: Add configurable ordering and usage ranking.
+7. `LIBRARY-UI-1`: Add prompt library manager.
