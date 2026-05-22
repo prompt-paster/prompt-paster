@@ -213,6 +213,33 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(handler.triggerCount, 1)
     }
 
+    func testUpdatingDoubleControlConfigurationResetsDetectorWithNewThreshold() throws {
+        let handler = FakeHotkeyHandler()
+        let monitor = FakeDoubleControlMonitor()
+        let controller = HotkeyController(
+            handler: handler,
+            registrar: AnyHotkeyRegistrar(FakeHotkeyRegistrar()),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(isAccessibilityTrusted: true),
+            doubleControlConfiguration: DoubleControlTapConfiguration(
+                tapThreshold: 0.25,
+                debounceInterval: 0.45
+            )
+        )
+
+        try controller.start()
+        controller.updateDoubleControlConfiguration(DoubleControlTapConfiguration(
+            tapThreshold: 0.50,
+            debounceInterval: 0.45
+        ))
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.0))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.05))
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.45))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.50))
+
+        XCTAssertEqual(handler.triggerCount, 1)
+    }
+
     func testDoubleControlDetectorRequiresTwoCompletedTapsWithinThreshold() {
         var detector = DoubleControlTapDetector(configuration: DoubleControlTapConfiguration(
             tapThreshold: 0.35,

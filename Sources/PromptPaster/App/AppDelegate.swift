@@ -14,8 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         settingsStore: settingsStore,
         fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
         doubleControlStatus: doubleControlStatus,
-        settingsChanged: { [weak self] in
+        triggerModeChanged: { [weak self] in
             self?.restartHotkeys()
+        },
+        doubleControlTimingChanged: { [weak self] in
+            self?.updateDoubleControlTiming()
         },
         openAccessibilitySettings: { [weak self] in
             self?.hotkeyController.openAccessibilitySettings()
@@ -147,6 +150,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         startHotkeys()
         settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         settingsController.doubleControlStatus = doubleControlStatus
+    }
+
+    private func updateDoubleControlTiming() {
+        hotkeyController?.updateDoubleControlConfiguration(settingsStore.doubleControlConfiguration)
     }
 
     private func requestAccessibilityPermission() {

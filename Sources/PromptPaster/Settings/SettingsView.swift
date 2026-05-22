@@ -6,7 +6,8 @@ struct SettingsView: View {
     @ObservedObject var settingsStore: SettingsStore
     let fallbackHotkeyStatusMessage: String?
     let doubleControlStatus: DoubleControlTriggerStatus
-    let settingsChanged: () -> Void
+    let triggerModeChanged: () -> Void
+    let doubleControlTimingChanged: () -> Void
     let openAccessibilitySettings: () -> Void
     let requestAccessibilityPermission: () -> Void
 
@@ -15,7 +16,8 @@ struct SettingsView: View {
         settingsStore: SettingsStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
-        settingsChanged: @escaping () -> Void = {},
+        triggerModeChanged: @escaping () -> Void = {},
+        doubleControlTimingChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
         requestAccessibilityPermission: @escaping () -> Void = {}
     ) {
@@ -23,7 +25,8 @@ struct SettingsView: View {
         self.settingsStore = settingsStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
-        self.settingsChanged = settingsChanged
+        self.triggerModeChanged = triggerModeChanged
+        self.doubleControlTimingChanged = doubleControlTimingChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
     }
@@ -83,10 +86,10 @@ struct SettingsView: View {
                 }
             }
             .onChange(of: settingsStore.triggerMode) { _, _ in
-                settingsChanged()
+                triggerModeChanged()
             }
             .onChange(of: settingsStore.doubleControlThresholdMilliseconds) { _, _ in
-                settingsChanged()
+                doubleControlTimingChanged()
             }
 
             Section("Prompt Library") {
@@ -114,7 +117,12 @@ struct SettingsView: View {
                     }
 
                     Button("Reveal in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([promptStore.libraryURL])
+                        do {
+                            let libraryURL = try promptStore.prepareLibraryFile()
+                            NSWorkspace.shared.activateFileViewerSelecting([libraryURL])
+                        } catch {
+                            promptStore.recordError(error)
+                        }
                     }
                 }
             }
@@ -122,14 +130,26 @@ struct SettingsView: View {
             Section("App") {
                 Toggle("Launch at login", isOn: Binding(
                     get: {
-                        settingsStore.launchAtLoginEnabled
+                        settingsStore.launchAtLoginStatus.isToggleOn
                     },
                     set: { isEnabled in
                         settingsStore.setLaunchAtLoginEnabled(isEnabled)
                     }
                 ))
-                Toggle("Show copied confirmation", isOn: $settingsStore.showCopiedConfirmation)
+                LabeledContent("Launch at login status", value: settingsStore.launchAtLoginStatus.displayValue)
                 LabeledContent("Dock icon", value: "Hidden")
+
+                if settingsStore.launchAtLoginStatus == .requiresApproval {
+                    Button("Open Login Items Settings") {
+                        settingsStore.openLoginItemsSettings()
+                    }
+                }
+
+                if let launchAtLoginStatusMessage = settingsStore.launchAtLoginStatus.message {
+                    Text(launchAtLoginStatusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
 
                 if let launchAtLoginErrorMessage = settingsStore.launchAtLoginErrorMessage {
                     Text(launchAtLoginErrorMessage)

@@ -3,35 +3,33 @@ import XCTest
 
 @MainActor
 final class SettingsStoreTests: XCTestCase {
-    func testDefaultsUseDoubleControlFallbackAndCopiedConfirmation() {
+    func testDefaultsUseDoubleControlFallback() {
         let defaults = makeDefaults()
-        let loginItemManager = FakeLoginItemManager(isEnabled: false)
+        let loginItemManager = FakeLoginItemManager(status: .disabled)
         let store = SettingsStore(defaults: defaults, loginItemManager: loginItemManager)
 
         XCTAssertEqual(store.triggerMode, .doubleControlWithFallback)
         XCTAssertEqual(store.doubleControlThresholdMilliseconds, 350)
         XCTAssertEqual(store.doubleControlConfiguration.tapThreshold, 0.35)
-        XCTAssertTrue(store.showCopiedConfirmation)
-        XCTAssertFalse(store.launchAtLoginEnabled)
+        XCTAssertEqual(store.launchAtLoginStatus, .disabled)
     }
 
-    func testPersistsTriggerThresholdAndConfirmationPreference() {
+    func testPersistsTriggerAndThresholdPreference() {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
 
         store.triggerMode = .fallbackHotkeyOnly
         store.setDoubleControlThresholdMilliseconds(425)
-        store.showCopiedConfirmation = false
 
         let reloadedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
         XCTAssertEqual(reloadedStore.triggerMode, .fallbackHotkeyOnly)
         XCTAssertEqual(reloadedStore.doubleControlThresholdMilliseconds, 425)
-        XCTAssertFalse(reloadedStore.showCopiedConfirmation)
     }
 
     func testClampsPersistedThresholdIntoSupportedRange() {
         let defaults = makeDefaults()
-        defaults.set(100, forKey: "settings.doubleControlThresholdMilliseconds")
+        let seedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
+        seedStore.setDoubleControlThresholdMilliseconds(100)
 
         let lowStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
         XCTAssertEqual(lowStore.doubleControlThresholdMilliseconds, 250)
@@ -42,27 +40,51 @@ final class SettingsStoreTests: XCTestCase {
 
     func testLaunchAtLoginToggleUsesLoginItemManager() {
         let defaults = makeDefaults()
-        let loginItemManager = FakeLoginItemManager(isEnabled: false)
+        let loginItemManager = FakeLoginItemManager(status: .disabled)
         let store = SettingsStore(defaults: defaults, loginItemManager: loginItemManager)
 
         store.setLaunchAtLoginEnabled(true)
 
-        XCTAssertTrue(store.launchAtLoginEnabled)
+        XCTAssertEqual(store.launchAtLoginStatus, .enabled)
         XCTAssertEqual(loginItemManager.requestedValues, [true])
         XCTAssertNil(store.launchAtLoginErrorMessage)
+    }
+
+    func testLaunchAtLoginApprovalNeededIsDistinctFromDisabled() {
+        let defaults = makeDefaults()
+        let loginItemManager = FakeLoginItemManager(status: .requiresApproval)
+        let store = SettingsStore(defaults: defaults, loginItemManager: loginItemManager)
+
+        XCTAssertEqual(store.launchAtLoginStatus, .requiresApproval)
+        XCTAssertTrue(store.launchAtLoginStatus.isToggleOn)
+        XCTAssertEqual(store.launchAtLoginStatus.displayValue, "Requires approval")
+
+        store.setLaunchAtLoginEnabled(false)
+
+        XCTAssertEqual(store.launchAtLoginStatus, .disabled)
+        XCTAssertEqual(loginItemManager.requestedValues, [false])
+    }
+
+    func testOpenLoginItemsSettingsForwardsToManager() {
+        let loginItemManager = FakeLoginItemManager()
+        let store = SettingsStore(defaults: makeDefaults(), loginItemManager: loginItemManager)
+
+        store.openLoginItemsSettings()
+
+        XCTAssertEqual(loginItemManager.openSettingsCount, 1)
     }
 
     func testLaunchAtLoginErrorRestoresSystemState() {
         let defaults = makeDefaults()
         let loginItemManager = FakeLoginItemManager(
-            isEnabled: false,
+            status: .disabled,
             error: FakeLoginItemError.denied
         )
         let store = SettingsStore(defaults: defaults, loginItemManager: loginItemManager)
 
         store.setLaunchAtLoginEnabled(true)
 
-        XCTAssertFalse(store.launchAtLoginEnabled)
+        XCTAssertEqual(store.launchAtLoginStatus, .disabled)
         XCTAssertEqual(store.launchAtLoginErrorMessage, "denied")
     }
 
@@ -75,12 +97,13 @@ final class SettingsStoreTests: XCTestCase {
 }
 
 private final class FakeLoginItemManager: LoginItemManaging {
-    var isLaunchAtLoginEnabled: Bool
+    var launchAtLoginStatus: LaunchAtLoginStatus
     var requestedValues: [Bool] = []
+    var openSettingsCount = 0
     private let error: Error?
 
-    init(isEnabled: Bool = false, error: Error? = nil) {
-        self.isLaunchAtLoginEnabled = isEnabled
+    init(status: LaunchAtLoginStatus = .disabled, error: Error? = nil) {
+        self.launchAtLoginStatus = status
         self.error = error
     }
 
@@ -89,7 +112,11 @@ private final class FakeLoginItemManager: LoginItemManaging {
         if let error {
             throw error
         }
-        isLaunchAtLoginEnabled = isEnabled
+        launchAtLoginStatus = isEnabled ? .enabled : .disabled
+    }
+
+    func openLoginItemsSettings() {
+        openSettingsCount += 1
     }
 }
 

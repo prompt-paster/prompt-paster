@@ -244,6 +244,7 @@ final class HotkeyController {
     private let doubleControlMonitor: DoubleControlMonitoring
     private let accessibilityPermissionChecker: AccessibilityPermissionChecking
     private var doubleControlDetector: DoubleControlTapDetector
+    private var doubleControlConfiguration: DoubleControlTapConfiguration
 
     init(
         shortcut: HotkeyShortcut = .controlOptionSpace,
@@ -260,6 +261,7 @@ final class HotkeyController {
         self.registrationState = HotkeyRegistrationState(registrar: registrar)
         self.doubleControlMonitor = doubleControlMonitor
         self.accessibilityPermissionChecker = accessibilityPermissionChecker
+        self.doubleControlConfiguration = doubleControlConfiguration
         self.doubleControlDetector = DoubleControlTapDetector(configuration: doubleControlConfiguration)
     }
 
@@ -294,6 +296,11 @@ final class HotkeyController {
 
     func openAccessibilitySettings() {
         accessibilityPermissionChecker.openAccessibilitySettings()
+    }
+
+    func updateDoubleControlConfiguration(_ configuration: DoubleControlTapConfiguration) {
+        doubleControlConfiguration = configuration
+        doubleControlDetector = DoubleControlTapDetector(configuration: configuration)
     }
 
     @discardableResult

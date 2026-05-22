@@ -6,7 +6,8 @@ final class SettingsWindowController {
     private var window: NSWindow?
     private let promptStore: PromptStore
     private let settingsStore: SettingsStore
-    private let settingsChanged: () -> Void
+    private let triggerModeChanged: () -> Void
+    private let doubleControlTimingChanged: () -> Void
     private let openAccessibilitySettings: () -> Void
     private let requestAccessibilityPermission: () -> Void
     var fallbackHotkeyStatusMessage: String? {
@@ -25,7 +26,8 @@ final class SettingsWindowController {
         settingsStore: SettingsStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
-        settingsChanged: @escaping () -> Void = {},
+        triggerModeChanged: @escaping () -> Void = {},
+        doubleControlTimingChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
         requestAccessibilityPermission: @escaping () -> Void = {}
     ) {
@@ -33,7 +35,8 @@ final class SettingsWindowController {
         self.settingsStore = settingsStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
-        self.settingsChanged = settingsChanged
+        self.triggerModeChanged = triggerModeChanged
+        self.doubleControlTimingChanged = doubleControlTimingChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
     }
@@ -74,7 +77,8 @@ final class SettingsWindowController {
             settingsStore: settingsStore,
             fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
             doubleControlStatus: doubleControlStatus,
-            settingsChanged: settingsChanged,
+            triggerModeChanged: triggerModeChanged,
+            doubleControlTimingChanged: doubleControlTimingChanged,
             openAccessibilitySettings: openAccessibilitySettings,
             requestAccessibilityPermission: requestAccessibilityPermission
         )

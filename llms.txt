@@ -75,8 +75,8 @@ Default user library path:
 
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
 - Fallback global hotkey: `Control + Option + Space` through `HotkeyController`.
-- Trigger mode, double-Control timing, copied-confirmation preference, and
-  launch-at-login state are managed by `SettingsStore`.
+- Trigger mode, double-Control timing, and launch-at-login state are managed by
+  `SettingsStore`.
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse, search, filter, navigate, copy selected prompts,
   close after successful copy, and keep the overlay open on clipboard failure.

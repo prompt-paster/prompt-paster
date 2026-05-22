@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import ServiceManagement
 
 enum TriggerMode: String, CaseIterable, Identifiable {
@@ -20,14 +21,26 @@ enum TriggerMode: String, CaseIterable, Identifiable {
 }
 
 protocol LoginItemManaging {
-    var isLaunchAtLoginEnabled: Bool { get }
+    var launchAtLoginStatus: LaunchAtLoginStatus { get }
 
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) throws
+    func openLoginItemsSettings()
 }
 
 struct LoginItemManager: LoginItemManaging {
-    var isLaunchAtLoginEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+    var launchAtLoginStatus: LaunchAtLoginStatus {
+        switch SMAppService.mainApp.status {
+        case .enabled:
+            .enabled
+        case .requiresApproval:
+            .requiresApproval
+        case .notRegistered:
+            .disabled
+        case .notFound:
+            .unavailable("Login item registration is unavailable for this app bundle.")
+        @unknown default:
+            .unavailable("Login item status is unavailable on this macOS version.")
+        }
     }
 
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) throws {
@@ -35,9 +48,16 @@ struct LoginItemManager: LoginItemManaging {
             if SMAppService.mainApp.status != .enabled {
                 try SMAppService.mainApp.register()
             }
-        } else if SMAppService.mainApp.status == .enabled {
+        } else if SMAppService.mainApp.status != .notRegistered {
             try SMAppService.mainApp.unregister()
         }
+    }
+
+    func openLoginItemsSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -46,7 +66,6 @@ final class SettingsStore: ObservableObject {
     private enum Keys {
         static let triggerMode = "settings.triggerMode"
         static let doubleControlThresholdMilliseconds = "settings.doubleControlThresholdMilliseconds"
-        static let showCopiedConfirmation = "settings.showCopiedConfirmation"
     }
 
     static let defaultDoubleControlThresholdMilliseconds = 350
@@ -61,13 +80,7 @@ final class SettingsStore: ObservableObject {
 
     @Published private(set) var doubleControlThresholdMilliseconds: Int
 
-    @Published var showCopiedConfirmation: Bool {
-        didSet {
-            defaults.set(showCopiedConfirmation, forKey: Keys.showCopiedConfirmation)
-        }
-    }
-
-    @Published private(set) var launchAtLoginEnabled: Bool
+    @Published private(set) var launchAtLoginStatus: LaunchAtLoginStatus
     @Published private(set) var launchAtLoginErrorMessage: String?
 
     private let defaults: UserDefaults
@@ -94,13 +107,7 @@ final class SettingsStore: ObservableObject {
             self.doubleControlThresholdMilliseconds = Self.clampedThreshold(storedThreshold)
         }
 
-        if defaults.object(forKey: Keys.showCopiedConfirmation) == nil {
-            self.showCopiedConfirmation = true
-        } else {
-            self.showCopiedConfirmation = defaults.bool(forKey: Keys.showCopiedConfirmation)
-        }
-
-        self.launchAtLoginEnabled = loginItemManager.isLaunchAtLoginEnabled
+        self.launchAtLoginStatus = loginItemManager.launchAtLoginStatus
         self.launchAtLoginErrorMessage = nil
     }
 
@@ -116,7 +123,7 @@ final class SettingsStore: ObservableObject {
     }
 
     func refreshLaunchAtLoginStatus() {
-        launchAtLoginEnabled = loginItemManager.isLaunchAtLoginEnabled
+        launchAtLoginStatus = loginItemManager.launchAtLoginStatus
     }
 
     func setDoubleControlThresholdMilliseconds(_ threshold: Int) {
@@ -127,12 +134,16 @@ final class SettingsStore: ObservableObject {
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {
         do {
             try loginItemManager.setLaunchAtLoginEnabled(isEnabled)
-            launchAtLoginEnabled = loginItemManager.isLaunchAtLoginEnabled
+            launchAtLoginStatus = loginItemManager.launchAtLoginStatus
             launchAtLoginErrorMessage = nil
         } catch {
-            launchAtLoginEnabled = loginItemManager.isLaunchAtLoginEnabled
+            launchAtLoginStatus = loginItemManager.launchAtLoginStatus
             launchAtLoginErrorMessage = error.localizedDescription
         }
+    }
+
+    func openLoginItemsSettings() {
+        loginItemManager.openLoginItemsSettings()
     }
 
     private static func clampedThreshold(_ threshold: Int) -> Int {
@@ -140,5 +151,45 @@ final class SettingsStore: ObservableObject {
             maximumDoubleControlThresholdMilliseconds,
             max(minimumDoubleControlThresholdMilliseconds, threshold)
         )
+    }
+}
+
+enum LaunchAtLoginStatus: Equatable {
+    case enabled
+    case disabled
+    case requiresApproval
+    case unavailable(String)
+
+    var isToggleOn: Bool {
+        switch self {
+        case .enabled, .requiresApproval:
+            true
+        case .disabled, .unavailable:
+            false
+        }
+    }
+
+    var displayValue: String {
+        switch self {
+        case .enabled:
+            "Enabled"
+        case .disabled:
+            "Disabled"
+        case .requiresApproval:
+            "Requires approval"
+        case .unavailable:
+            "Unavailable"
+        }
+    }
+
+    var message: String? {
+        switch self {
+        case .enabled, .disabled:
+            nil
+        case .requiresApproval:
+            "Launch at login is registered but needs approval in System Settings."
+        case let .unavailable(message):
+            message
+        }
     }
 }
