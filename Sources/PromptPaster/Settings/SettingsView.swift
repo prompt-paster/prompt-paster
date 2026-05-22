@@ -4,22 +4,50 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
     let fallbackHotkeyStatusMessage: String?
+    let doubleControlStatusMessage: String?
+    let isDoubleControlActive: Bool
+    let openAccessibilitySettings: () -> Void
 
-    init(promptStore: PromptStore, fallbackHotkeyStatusMessage: String? = nil) {
+    init(
+        promptStore: PromptStore,
+        fallbackHotkeyStatusMessage: String? = nil,
+        doubleControlStatusMessage: String? = nil,
+        isDoubleControlActive: Bool = false,
+        openAccessibilitySettings: @escaping () -> Void = {}
+    ) {
         self.promptStore = promptStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
+        self.doubleControlStatusMessage = doubleControlStatusMessage
+        self.isDoubleControlActive = isDoubleControlActive
+        self.openAccessibilitySettings = openAccessibilitySettings
     }
 
     var body: some View {
         Form {
             Section("Trigger") {
-                LabeledContent("Active trigger", value: HotkeyDisplay.fallbackShortcut)
-                LabeledContent("Double Control", value: HotkeyDisplay.doubleControlStatus)
+                LabeledContent("Fallback hotkey", value: HotkeyDisplay.fallbackShortcut)
+                LabeledContent(
+                    HotkeyDisplay.doubleControlShortcut,
+                    value: doubleControlStatusValue
+                )
+                LabeledContent("Double Control timing", value: HotkeyDisplay.doubleControlThreshold)
 
                 if let fallbackHotkeyStatusMessage {
                     Text(fallbackHotkeyStatusMessage)
                         .font(.footnote)
                         .foregroundStyle(.red)
+                }
+
+                if let doubleControlStatusMessage {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(doubleControlStatusMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+
+                        Button("Open Accessibility Settings") {
+                            openAccessibilitySettings()
+                        }
+                    }
                 }
             }
 
@@ -57,5 +85,15 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding()
         .frame(minWidth: 520, minHeight: 420)
+    }
+
+    private var doubleControlStatusValue: String {
+        if isDoubleControlActive {
+            return "Active"
+        }
+        if doubleControlStatusMessage?.contains("Accessibility") == true {
+            return "Needs Accessibility"
+        }
+        return "Unavailable"
     }
 }

@@ -6,10 +6,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
     private var fallbackHotkeyStatusMessage: String?
+    private var doubleControlStatusMessage: String?
+    private var isDoubleControlActive = false
     private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
     private lazy var settingsController = SettingsWindowController(
         promptStore: promptStore,
-        fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage
+        fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
+        doubleControlStatusMessage: doubleControlStatusMessage,
+        isDoubleControlActive: isDoubleControlActive,
+        openAccessibilitySettings: { [weak self] in
+            self?.hotkeyController.openAccessibilitySettings()
+        }
     )
     private lazy var hotkeyController = HotkeyController(handler: self)
 
@@ -83,6 +90,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
 
     @objc private func openSettings() {
         settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
+        settingsController.doubleControlStatusMessage = doubleControlStatusMessage
+        settingsController.isDoubleControlActive = isDoubleControlActive
         settingsController.show()
     }
 
@@ -112,10 +121,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
 
     private func startFallbackHotkey() {
         do {
-            try hotkeyController.start()
-            fallbackHotkeyStatusMessage = nil
+            let status = try hotkeyController.start()
+            fallbackHotkeyStatusMessage = status.fallbackHotkeyStatusMessage
+            doubleControlStatusMessage = status.doubleControlStatusMessage
+            isDoubleControlActive = status.isDoubleControlActive
         } catch {
             fallbackHotkeyStatusMessage = "Fallback hotkey unavailable. \(error.localizedDescription)"
+            doubleControlStatusMessage = "Double Control not started because fallback hotkey registration failed."
+            isDoubleControlActive = false
             NSLog("Prompt Paster fallback hotkey unavailable: \(error.localizedDescription)")
         }
     }
