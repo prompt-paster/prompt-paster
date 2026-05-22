@@ -13,6 +13,7 @@ struct PromptOverlayView: View {
     @State private var selectedCategoryID = PromptCategoryFilter.all.id
     @State private var selectedPromptID: Prompt.ID?
     @State private var copyStatusMessage: String?
+    @State private var promptGridColumnCount = 1
     @FocusState private var isSearchFocused: Bool
 
     init(
@@ -45,13 +46,6 @@ struct PromptOverlayView: View {
             query: query,
             selectedCategoryID: selectedCategoryID
         )
-    }
-
-    private var selectedIndex: Int? {
-        guard let selectedPromptID else {
-            return nil
-        }
-        return visiblePrompts.firstIndex { $0.id == selectedPromptID }
     }
 
     private var actions: PromptOverlayActions {
@@ -105,6 +99,9 @@ struct PromptOverlayView: View {
         .onChange(of: prompts) { _, _ in
             keepCategoryVisible()
             keepSelectionVisible()
+        }
+        .onPreferenceChange(PromptGridColumnCountPreferenceKey.self) { columnCount in
+            promptGridColumnCount = columnCount
         }
     }
 
@@ -238,6 +235,7 @@ struct PromptOverlayView: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .preference(key: PromptGridColumnCountPreferenceKey.self, value: columnCount)
             }
         }
     }
@@ -245,8 +243,8 @@ struct PromptOverlayView: View {
     private func promptGridColumns(count: Int) -> [GridItem] {
         Array(
             repeating: GridItem(
-                .flexible(minimum: 220, maximum: 360),
-                spacing: 10,
+                .flexible(minimum: PromptOverlayState.promptCardMinimumWidth),
+                spacing: PromptOverlayState.promptCardSpacing,
                 alignment: .top
             ),
             count: count
@@ -266,10 +264,10 @@ struct PromptOverlayView: View {
             selectCurrentPrompt()
             return true
         case 125:
-            moveSelection(by: 1)
+            moveSelectionVertically(direction: 1)
             return true
         case 126:
-            moveSelection(by: -1)
+            moveSelectionVertically(direction: -1)
             return true
         default:
             guard let digit = event.charactersIgnoringModifiers.flatMap(Int.init),
@@ -294,6 +292,17 @@ struct PromptOverlayView: View {
             currentID: selectedPromptID,
             visiblePrompts: visiblePrompts,
             offset: offset
+        )
+        copyStatusMessage = nil
+    }
+
+    private func moveSelectionVertically(direction: Int) {
+        selectedPromptID = PromptOverlayState.selectedPromptIDMovingVertically(
+            currentID: selectedPromptID,
+            visiblePrompts: visiblePrompts,
+            availableColumns: promptGridColumnCount,
+            previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+            direction: direction
         )
         copyStatusMessage = nil
     }
@@ -341,6 +350,14 @@ struct PromptOverlayView: View {
     }
 }
 
+private struct PromptGridColumnCountPreferenceKey: PreferenceKey {
+    static let defaultValue = 1
+
+    static func reduce(value: inout Int, nextValue: () -> Int) {
+        value = nextValue()
+    }
+}
+
 private struct PromptCardView: View {
     let prompt: Prompt
     let shortcutBadge: String?
@@ -381,8 +398,10 @@ private struct PromptCardView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
+                            .frame(maxWidth: 140, alignment: .leading)
                             .background(.background.opacity(0.45), in: Capsule())
                     }
                 }
@@ -411,8 +430,10 @@ private struct PromptCardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .truncationMode(.tail)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
+                .frame(maxWidth: 160, alignment: .leading)
                 .background(.thinMaterial, in: Capsule())
         }
     }
@@ -485,7 +506,9 @@ private struct FlowLayout: Layout {
         var usedWidth: CGFloat = 0
 
         for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
+            let proposedSize = ProposedViewSize(width: maxWidth, height: nil)
+            let measuredSize = subview.sizeThatFits(proposedSize)
+            let size = CGSize(width: min(measuredSize.width, maxWidth), height: measuredSize.height)
             if cursor.x > 0, cursor.x + size.width > maxWidth {
                 cursor.x = 0
                 cursor.y += lineHeight + lineSpacing

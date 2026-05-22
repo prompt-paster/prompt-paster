@@ -6,7 +6,23 @@ struct PromptOverlayEmptyState: Equatable {
     let detail: String
 }
 
+struct PromptOverlayCardLayoutItem: Equatable {
+    let promptID: Prompt.ID
+    let index: Int
+    let row: Int
+    let column: Int
+    let columnSpan: Int
+
+    var centerColumn: Double {
+        Double(column) + (Double(columnSpan) / 2)
+    }
+}
+
 struct PromptOverlayState {
+    static let promptCardMinimumWidth: CGFloat = 240
+    static let promptCardSpacing: CGFloat = 10
+    static let promptCardMaximumColumnCount = 6
+
     static func visiblePrompts(
         prompts: [Prompt],
         query: String,
@@ -98,6 +114,48 @@ struct PromptOverlayState {
         return visiblePrompts[nextIndex].id
     }
 
+    static func selectedPromptIDMovingVertically(
+        currentID: Prompt.ID?,
+        visiblePrompts: [Prompt],
+        availableColumns: Int,
+        previewCharacterLimit: Int,
+        direction: Int
+    ) -> Prompt.ID? {
+        guard direction != 0 else {
+            return currentID
+        }
+
+        let layout = promptCardLayout(
+            for: visiblePrompts,
+            availableColumns: availableColumns,
+            previewCharacterLimit: previewCharacterLimit
+        )
+        guard !layout.isEmpty else {
+            return nil
+        }
+
+        guard let currentID,
+              let currentItem = layout.first(where: { $0.promptID == currentID })
+        else {
+            return layout.first?.promptID
+        }
+
+        let targetRow = currentItem.row + direction
+        let targetItems = layout.filter { $0.row == targetRow }
+        guard !targetItems.isEmpty else {
+            return currentID
+        }
+
+        return targetItems.min { lhs, rhs in
+            let lhsDistance = abs(lhs.centerColumn - currentItem.centerColumn)
+            let rhsDistance = abs(rhs.centerColumn - currentItem.centerColumn)
+            if lhsDistance == rhsDistance {
+                return lhs.index < rhs.index
+            }
+            return lhsDistance < rhsDistance
+        }?.promptID
+    }
+
     static func previewText(for body: String, characterLimit: Int) -> String {
         guard body.count > characterLimit else {
             return body
@@ -122,18 +180,10 @@ struct PromptOverlayState {
     }
 
     static func promptCardColumnCount(for availableWidth: CGFloat) -> Int {
-        switch availableWidth {
-        case ..<720:
-            1
-        case ..<1_040:
-            2
-        case ..<1_420:
-            3
-        case ..<1_780:
-            4
-        default:
-            5
-        }
+        let widthWithTrailingSpacing = availableWidth + promptCardSpacing
+        let cardWidthWithSpacing = promptCardMinimumWidth + promptCardSpacing
+        let columnCount = Int(floor(widthWithTrailingSpacing / cardWidthWithSpacing))
+        return min(promptCardMaximumColumnCount, max(1, columnCount))
     }
 
     static func promptCardColumnSpan(
@@ -154,6 +204,46 @@ struct PromptOverlayState {
             || prompt.tags.count >= 4
 
         return shouldUseWideCard ? 2 : 1
+    }
+
+    static func promptCardLayout(
+        for prompts: [Prompt],
+        availableColumns: Int,
+        previewCharacterLimit: Int
+    ) -> [PromptOverlayCardLayoutItem] {
+        let columnCount = max(1, availableColumns)
+        var row = 0
+        var column = 0
+
+        return prompts.enumerated().map { index, prompt in
+            let columnSpan = min(
+                columnCount,
+                promptCardColumnSpan(
+                    for: prompt,
+                    availableColumns: columnCount,
+                    previewCharacterLimit: previewCharacterLimit
+                )
+            )
+
+            if column > 0, column + columnSpan > columnCount {
+                row += 1
+                column = 0
+            }
+
+            let item = PromptOverlayCardLayoutItem(
+                promptID: prompt.id,
+                index: index,
+                row: row,
+                column: column,
+                columnSpan: columnSpan
+            )
+            column += columnSpan
+            if column >= columnCount {
+                row += 1
+                column = 0
+            }
+            return item
+        }
     }
 
     static func promptCardMinimumHeight(

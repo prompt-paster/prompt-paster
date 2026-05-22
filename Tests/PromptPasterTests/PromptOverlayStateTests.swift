@@ -122,11 +122,11 @@ final class PromptOverlayStateTests: XCTestCase {
     }
 
     func testPromptCardColumnCountAdaptsToAvailableWidth() {
-        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 620), 1)
-        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 860), 2)
-        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 1_180), 3)
-        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 1_560), 4)
-        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 1_900), 5)
+        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 470), 1)
+        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 620), 2)
+        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 1_180), 4)
+        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 1_560), 6)
+        XCTAssertEqual(PromptOverlayState.promptCardColumnCount(for: 2_400), 6)
     }
 
     func testPromptCardSpanKeepsSmallLayoutsSingleColumn() {
@@ -179,6 +179,105 @@ final class PromptOverlayStateTests: XCTestCase {
                 previewCharacterLimit: 260
             ),
             188
+        )
+    }
+
+    func testPromptCardLayoutTracksRowsColumnsAndSpans() {
+        let longPrompt = Prompt(
+            id: "wide",
+            title: "A long prompt that should span two columns",
+            category: "Review",
+            body: String(repeating: "Body ", count: 90),
+            tags: ["swift", "review", "macos", "overlay"]
+        )
+        let compactPrompts = [
+            Prompt(id: "one", title: "One", category: nil, body: "One"),
+            Prompt(id: "two", title: "Two", category: nil, body: "Two")
+        ]
+
+        XCTAssertEqual(
+            PromptOverlayState.promptCardLayout(
+                for: [longPrompt] + compactPrompts,
+                availableColumns: 3,
+                previewCharacterLimit: 260
+            ),
+            [
+                PromptOverlayCardLayoutItem(
+                    promptID: "wide",
+                    index: 0,
+                    row: 0,
+                    column: 0,
+                    columnSpan: 2
+                ),
+                PromptOverlayCardLayoutItem(
+                    promptID: "one",
+                    index: 1,
+                    row: 0,
+                    column: 2,
+                    columnSpan: 1
+                ),
+                PromptOverlayCardLayoutItem(
+                    promptID: "two",
+                    index: 2,
+                    row: 1,
+                    column: 0,
+                    columnSpan: 1
+                )
+            ]
+        )
+    }
+
+    func testVerticalSelectionMovesByVisualGridRows() {
+        let gridPrompts = [
+            Prompt(id: "one", title: "One", category: nil, body: "One"),
+            Prompt(id: "two", title: "Two", category: nil, body: "Two"),
+            Prompt(id: "three", title: "Three", category: nil, body: "Three"),
+            Prompt(id: "four", title: "Four", category: nil, body: "Four"),
+            Prompt(id: "five", title: "Five", category: nil, body: "Five")
+        ]
+
+        XCTAssertEqual(
+            PromptOverlayState.selectedPromptIDMovingVertically(
+                currentID: "two",
+                visiblePrompts: gridPrompts,
+                availableColumns: 3,
+                previewCharacterLimit: 80,
+                direction: 1
+            ),
+            "five"
+        )
+        XCTAssertEqual(
+            PromptOverlayState.selectedPromptIDMovingVertically(
+                currentID: "five",
+                visiblePrompts: gridPrompts,
+                availableColumns: 3,
+                previewCharacterLimit: 80,
+                direction: -1
+            ),
+            "two"
+        )
+    }
+
+    func testVerticalSelectionClampsAtGridEdges() {
+        XCTAssertEqual(
+            PromptOverlayState.selectedPromptIDMovingVertically(
+                currentID: "first",
+                visiblePrompts: prompts,
+                availableColumns: 3,
+                previewCharacterLimit: 80,
+                direction: -1
+            ),
+            "first"
+        )
+        XCTAssertEqual(
+            PromptOverlayState.selectedPromptIDMovingVertically(
+                currentID: "third",
+                visiblePrompts: prompts,
+                availableColumns: 3,
+                previewCharacterLimit: 80,
+                direction: 1
+            ),
+            "third"
         )
     }
 }
