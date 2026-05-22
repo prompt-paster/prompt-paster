@@ -5,6 +5,11 @@ import SwiftUI
 final class OverlayWindowController {
     private var panel: NSPanel?
     private var previouslyActiveApplication: NSRunningApplication?
+    private let promptStore: PromptStore
+
+    init(promptStore: PromptStore) {
+        self.promptStore = promptStore
+    }
 
     func show(message: String? = nil) {
         let panel = panel ?? makePanel()
@@ -23,7 +28,7 @@ final class OverlayWindowController {
         )
 
         panel.setFrame(frame, display: true)
-        panel.contentView = NSHostingView(rootView: PlaceholderOverlayView(message: message) { [weak self] in
+        panel.contentView = NSHostingView(rootView: PromptOverlayView(promptStore: promptStore, message: message) { [weak self] in
             self?.hide()
         })
         panel.makeKeyAndOrderFront(nil)

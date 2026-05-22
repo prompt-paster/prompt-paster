@@ -5,7 +5,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
-    private let overlayController = OverlayWindowController()
+    private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
     private lazy var settingsController = SettingsWindowController(promptStore: promptStore)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
