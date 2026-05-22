@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NSApp.mainMenu = MainMenuBuilder.build(quitTarget: self, quitAction: #selector(quit))
         promptStore.load()
         configureStatusItem()
         startHotkeys()
