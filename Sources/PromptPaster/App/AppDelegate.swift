@@ -8,7 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private let settingsStore = SettingsStore()
     private var fallbackHotkeyStatusMessage: String?
     private var doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility
-    private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
+    private lazy var overlayController = OverlayWindowController(
+        promptStore: promptStore,
+        openSettings: { [weak self] in
+            self?.openSettings()
+        }
+    )
     private lazy var settingsController = SettingsWindowController(
         promptStore: promptStore,
         settingsStore: settingsStore,

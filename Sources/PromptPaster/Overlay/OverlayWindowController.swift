@@ -7,10 +7,16 @@ final class OverlayWindowController {
     private var previouslyActiveApplication: NSRunningApplication?
     private let promptStore: PromptStore
     private let clipboard: ClipboardCopying
+    private let openSettings: () -> Void
 
-    init(promptStore: PromptStore, clipboard: ClipboardCopying = ClipboardService()) {
+    init(
+        promptStore: PromptStore,
+        clipboard: ClipboardCopying = ClipboardService(),
+        openSettings: @escaping () -> Void = {}
+    ) {
         self.promptStore = promptStore
         self.clipboard = clipboard
+        self.openSettings = openSettings
     }
 
     var isVisible: Bool {
@@ -46,7 +52,11 @@ final class OverlayWindowController {
             rootView: PromptOverlayView(
                 promptStore: promptStore,
                 message: message,
-                clipboard: clipboard
+                clipboard: clipboard,
+                openSettings: { [weak self] in
+                    self?.hide()
+                    self?.openSettings()
+                }
             ) { [weak self] in
                 self?.hide()
             }

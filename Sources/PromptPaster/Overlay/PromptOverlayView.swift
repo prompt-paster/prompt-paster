@@ -5,6 +5,7 @@ struct PromptOverlayView: View {
 
     let message: String?
     let clipboard: ClipboardCopying
+    let openSettings: () -> Void
     let close: () -> Void
 
     @State private var query = ""
@@ -17,11 +18,13 @@ struct PromptOverlayView: View {
         promptStore: PromptStore,
         message: String?,
         clipboard: ClipboardCopying = ClipboardService(),
+        openSettings: @escaping () -> Void = {},
         close: @escaping () -> Void
     ) {
         self.promptStore = promptStore
         self.message = message
         self.clipboard = clipboard
+        self.openSettings = openSettings
         self.close = close
     }
 
@@ -117,6 +120,15 @@ struct PromptOverlayView: View {
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(minWidth: 34)
+
+            Button(action: openSettings) {
+                Image(systemName: "gearshape")
+                    .imageScale(.medium)
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
+            .accessibilityLabel("Settings")
 
             Button("Close", action: close)
                 .keyboardShortcut(.escape, modifiers: [])
