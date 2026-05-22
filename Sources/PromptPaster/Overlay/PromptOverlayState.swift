@@ -5,12 +5,6 @@ struct PromptOverlayEmptyState: Equatable {
     let detail: String
 }
 
-struct PromptOverlaySelectionOutcome: Equatable {
-    let selectedPromptID: Prompt.ID
-    let shouldClose: Bool
-    let copyStatusMessage: String?
-}
-
 struct PromptOverlayState {
     static func visiblePrompts(
         prompts: [Prompt],
@@ -103,23 +97,4 @@ struct PromptOverlayState {
         return visiblePrompts[nextIndex].id
     }
 
-    static func selectionOutcome(
-        for prompt: Prompt,
-        copyPlainText: (String) throws -> Void
-    ) -> PromptOverlaySelectionOutcome {
-        do {
-            try copyPlainText(prompt.body)
-            return PromptOverlaySelectionOutcome(
-                selectedPromptID: prompt.id,
-                shouldClose: true,
-                copyStatusMessage: nil
-            )
-        } catch {
-            return PromptOverlaySelectionOutcome(
-                selectedPromptID: prompt.id,
-                shouldClose: false,
-                copyStatusMessage: "Could not copy \"\(prompt.title)\". \(error.localizedDescription)"
-            )
-        }
-    }
 }

@@ -48,6 +48,10 @@ struct PromptOverlayView: View {
         return visiblePrompts.firstIndex { $0.id == selectedPromptID }
     }
 
+    private var actions: PromptOverlayActions {
+        PromptOverlayActions(clipboard: clipboard)
+    }
+
     private var searchStrokeStyle: AnyShapeStyle {
         isSearchFocused
             ? AnyShapeStyle(Color.accentColor.opacity(0.55))
@@ -259,26 +263,28 @@ struct PromptOverlayView: View {
             currentID: selectedPromptID,
             visiblePrompts: visiblePrompts
         )
-        copyStatusMessage = nil
     }
 
     private func selectCurrentPrompt() {
-        guard let selectedIndex else {
+        guard let outcome = actions.selectCurrentPrompt(
+            selectedPromptID: selectedPromptID,
+            visiblePrompts: visiblePrompts
+        ) else {
             return
         }
-        selectPrompt(at: selectedIndex)
+
+        apply(outcome)
     }
 
     private func selectPrompt(at index: Int) {
-        guard visiblePrompts.indices.contains(index) else {
+        guard let outcome = actions.selectPrompt(at: index, visiblePrompts: visiblePrompts) else {
             return
         }
 
-        let prompt = visiblePrompts[index]
-        let outcome = PromptOverlayState.selectionOutcome(for: prompt) { text in
-            try clipboard.copyPlainText(text)
-        }
+        apply(outcome)
+    }
 
+    private func apply(_ outcome: PromptOverlaySelectionOutcome) {
         selectedPromptID = outcome.selectedPromptID
         copyStatusMessage = outcome.copyStatusMessage
 

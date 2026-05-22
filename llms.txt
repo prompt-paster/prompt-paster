@@ -22,6 +22,7 @@ Sources/PromptPaster/
     PromptSearch.swift
     PromptStore.swift
   Overlay/
+    PromptOverlayActions.swift
     OverlayKeyCaptureView.swift
     OverlayWindowController.swift
     PromptOverlayState.swift

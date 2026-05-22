@@ -36,32 +36,6 @@ final class PromptOverlayStateTests: XCTestCase {
         ])
     }
 
-    func testSelectionOutcomeCopiesPromptBodyAndClosesOnSuccess() {
-        var copiedText: String?
-        let outcome = PromptOverlayState.selectionOutcome(for: prompts[0]) { text in
-            copiedText = text
-        }
-
-        XCTAssertEqual(copiedText, "First body")
-        XCTAssertEqual(outcome, PromptOverlaySelectionOutcome(
-            selectedPromptID: "first",
-            shouldClose: true,
-            copyStatusMessage: nil
-        ))
-    }
-
-    func testSelectionOutcomeKeepsOverlayOpenWithMessageOnCopyFailure() {
-        let outcome = PromptOverlayState.selectionOutcome(for: prompts[0]) { _ in
-            throw ClipboardServiceError.writeFailed
-        }
-
-        XCTAssertEqual(outcome, PromptOverlaySelectionOutcome(
-            selectedPromptID: "first",
-            shouldClose: false,
-            copyStatusMessage: "Could not copy \"First\". Clipboard write failed."
-        ))
-    }
-
     func testEmptyLibraryAndEmptySearchHaveDifferentStates() {
         XCTAssertEqual(
             PromptOverlayState.emptyState(
