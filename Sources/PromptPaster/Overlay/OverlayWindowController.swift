@@ -6,9 +6,11 @@ final class OverlayWindowController {
     private var panel: NSPanel?
     private var previouslyActiveApplication: NSRunningApplication?
     private let promptStore: PromptStore
+    private let clipboard: ClipboardCopying
 
-    init(promptStore: PromptStore) {
+    init(promptStore: PromptStore, clipboard: ClipboardCopying = ClipboardService()) {
         self.promptStore = promptStore
+        self.clipboard = clipboard
     }
 
     func show(message: String? = nil) {
@@ -28,9 +30,15 @@ final class OverlayWindowController {
         )
 
         panel.setFrame(frame, display: true)
-        panel.contentView = NSHostingView(rootView: PromptOverlayView(promptStore: promptStore, message: message) { [weak self] in
-            self?.hide()
-        })
+        panel.contentView = NSHostingView(
+            rootView: PromptOverlayView(
+                promptStore: promptStore,
+                message: message,
+                clipboard: clipboard
+            ) { [weak self] in
+                self?.hide()
+            }
+        )
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

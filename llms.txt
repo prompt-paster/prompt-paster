@@ -17,6 +17,7 @@ Sources/PromptPaster/
     Prompt.swift
     PromptLibrary.swift
   Services/
+    ClipboardService.swift
     PromptLibraryCoding.swift
     PromptSearch.swift
     PromptStore.swift
@@ -69,8 +70,8 @@ Default user library path:
 
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
-- Current overlay scope: browse, search, filter, navigate, and acknowledge prompts.
-- Clipboard copy-and-close is the next planned feature and is not implemented yet.
+- Current overlay scope: browse, search, filter, navigate, copy selected prompts,
+  close after successful copy, and keep the overlay open on clipboard failure.
 
 ## Configuration and Packaging
 

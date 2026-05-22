@@ -5,6 +5,12 @@ struct PromptOverlayEmptyState: Equatable {
     let detail: String
 }
 
+struct PromptOverlaySelectionOutcome: Equatable {
+    let selectedPromptID: Prompt.ID
+    let shouldClose: Bool
+    let copyStatusMessage: String?
+}
+
 struct PromptOverlayState {
     static func visiblePrompts(
         prompts: [Prompt],
@@ -17,7 +23,7 @@ struct PromptOverlayState {
     static func statusMessages(
         message: String?,
         validation: PromptLibraryValidation?,
-        acknowledgement: String?
+        copyStatusMessage: String?
     ) -> [String] {
         var messages: [String] = []
 
@@ -29,8 +35,8 @@ struct PromptOverlayState {
             messages.append("Library loaded with \(validation.warnings.count) warning\(validation.warnings.count == 1 ? "" : "s").")
         }
 
-        if let acknowledgement {
-            messages.append(acknowledgement)
+        if let copyStatusMessage {
+            messages.append(copyStatusMessage)
         }
 
         return messages
@@ -95,5 +101,25 @@ struct PromptOverlayState {
         } ?? 0
         let nextIndex = min(max(currentIndex + offset, 0), visiblePrompts.count - 1)
         return visiblePrompts[nextIndex].id
+    }
+
+    static func selectionOutcome(
+        for prompt: Prompt,
+        copyPlainText: (String) throws -> Void
+    ) -> PromptOverlaySelectionOutcome {
+        do {
+            try copyPlainText(prompt.body)
+            return PromptOverlaySelectionOutcome(
+                selectedPromptID: prompt.id,
+                shouldClose: true,
+                copyStatusMessage: nil
+            )
+        } catch {
+            return PromptOverlaySelectionOutcome(
+                selectedPromptID: prompt.id,
+                shouldClose: false,
+                copyStatusMessage: "Could not copy \"\(prompt.title)\". \(error.localizedDescription)"
+            )
+        }
     }
 }

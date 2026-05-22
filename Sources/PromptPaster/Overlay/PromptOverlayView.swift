@@ -4,13 +4,26 @@ struct PromptOverlayView: View {
     @ObservedObject var promptStore: PromptStore
 
     let message: String?
+    let clipboard: ClipboardCopying
     let close: () -> Void
 
     @State private var query = ""
     @State private var selectedCategoryID = PromptCategoryFilter.all.id
     @State private var selectedPromptID: Prompt.ID?
-    @State private var acknowledgement: String?
+    @State private var copyStatusMessage: String?
     @FocusState private var isSearchFocused: Bool
+
+    init(
+        promptStore: PromptStore,
+        message: String?,
+        clipboard: ClipboardCopying = ClipboardService(),
+        close: @escaping () -> Void
+    ) {
+        self.promptStore = promptStore
+        self.message = message
+        self.clipboard = clipboard
+        self.close = close
+    }
 
     private var prompts: [Prompt] {
         promptStore.library?.prompts ?? []
@@ -153,7 +166,7 @@ struct PromptOverlayView: View {
         PromptOverlayState.statusMessages(
             message: message,
             validation: promptStore.lastErrorMessage == nil ? promptStore.validation : nil,
-            acknowledgement: acknowledgement
+            copyStatusMessage: copyStatusMessage
         )
     }
 
@@ -231,7 +244,7 @@ struct PromptOverlayView: View {
             visiblePrompts: visiblePrompts,
             offset: offset
         )
-        acknowledgement = nil
+        copyStatusMessage = nil
     }
 
     private func keepCategoryVisible() {
@@ -246,7 +259,7 @@ struct PromptOverlayView: View {
             currentID: selectedPromptID,
             visiblePrompts: visiblePrompts
         )
-        acknowledgement = nil
+        copyStatusMessage = nil
     }
 
     private func selectCurrentPrompt() {
@@ -262,8 +275,16 @@ struct PromptOverlayView: View {
         }
 
         let prompt = visiblePrompts[index]
-        selectedPromptID = prompt.id
-        acknowledgement = "Selected \"\(prompt.title)\". Clipboard copy and close are planned for CLIPBOARD-1."
+        let outcome = PromptOverlayState.selectionOutcome(for: prompt) { text in
+            try clipboard.copyPlainText(text)
+        }
+
+        selectedPromptID = outcome.selectedPromptID
+        copyStatusMessage = outcome.copyStatusMessage
+
+        if outcome.shouldClose {
+            close()
+        }
     }
 }
 
