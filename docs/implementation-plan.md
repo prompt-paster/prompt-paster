@@ -345,6 +345,11 @@ Suggested seed prompt count:
 
 Goal: produce an installable app artifact.
 
+Current `PACKAGING-1` scope uses a DMG as the first installable artifact. This
+matches the normal macOS drag-to-Applications release flow and keeps local
+validation independent of Apple Developer credentials. ZIP packaging remains a
+later distribution option if release hosting needs it.
+
 Tasks:
 
 - Configure app icon.
@@ -355,6 +360,7 @@ Tasks:
 - Add install instructions to `README.md`.
 - Add permission instructions.
 - Add troubleshooting section.
+- Keep signing and notarization optional for local validation.
 
 Validation:
 

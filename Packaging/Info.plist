@@ -8,6 +8,8 @@
 	<string>PromptPaster</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.shaypal5.prompt-paster</string>
+	<key>CFBundleIconFile</key>
+	<string>PromptPaster</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

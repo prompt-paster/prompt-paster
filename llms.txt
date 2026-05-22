@@ -8,7 +8,9 @@ agent prompts from an overlay and copying them to the clipboard.
 ```text
 Package.swift
 Packaging/
+  Entitlements.plist
   Info.plist
+  PromptPaster.icns
 Sources/PromptPaster/
   App/
     AppDelegate.swift
@@ -45,6 +47,9 @@ docs/
   review-recommendations.md
 scripts/
   build-app.sh
+  build-dmg.sh
+  generate-app-icon.sh
+  validate-release-package.sh
 ```
 
 ## Critical Entry Points
@@ -86,7 +91,12 @@ Default user library path:
 - SwiftPM configuration: `Package.swift`
 - User preferences and login-item integration: `Sources/PromptPaster/Services/SettingsStore.swift`
 - App bundle metadata: `Packaging/Info.plist`
+- Checked-in app icon: `Packaging/PromptPaster.icns`
+- Signing entitlements for release builds: `Packaging/Entitlements.plist`
 - Local `.app` builder: `scripts/build-app.sh`
+- Local DMG builder: `scripts/build-dmg.sh`
+- Icon regeneration helper: `scripts/generate-app-icon.sh`
+- DMG structure and optional launch validator: `scripts/validate-release-package.sh`
 - Build output is ignored under `.build/` and `dist/`.
 
 ## Planning and Agent Context
@@ -104,4 +114,6 @@ swift build
 swift test
 scripts/build-app.sh
 plutil -lint Packaging/Info.plist
+scripts/build-dmg.sh
+scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg
 ```
