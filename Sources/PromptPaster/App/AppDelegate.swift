@@ -49,7 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: StatusItemIcon.statusItemLength)
         if let button = item.button {
-            button.attributedTitle = StatusItemIcon.makeMenuBarTitle()
+            button.image = nil
+            button.imagePosition = .noImage
+            button.title = StatusItemIcon.title
             button.toolTip = "Prompt Paster"
             button.setAccessibilityLabel(StatusItemIcon.accessibilityDescription)
         }

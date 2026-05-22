@@ -23,7 +23,7 @@ func drawStatusBar(in rect: NSRect, background: NSColor, foreground: NSColor, la
     background.setFill()
     NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12).fill()
 
-    let itemRect = NSRect(x: rect.midX - 62, y: rect.midY - 16, width: 124, height: 32)
+    let itemRect = NSRect(x: rect.midX - 20, y: rect.midY - 16, width: 40, height: 32)
     foreground.withAlphaComponent(0.12).setFill()
     NSBezierPath(roundedRect: itemRect, xRadius: 7, yRadius: 7).fill()
 
@@ -31,7 +31,7 @@ func drawStatusBar(in rect: NSRect, background: NSColor, foreground: NSColor, la
         .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
         .foregroundColor: foreground.withAlphaComponent(0.92)
     ]
-    "Prompt Paster".draw(at: NSPoint(x: itemRect.minX + 11, y: itemRect.midY - 8), withAttributes: badgeAttributes)
+    "PP".draw(at: NSPoint(x: itemRect.minX + 10, y: itemRect.midY - 8), withAttributes: badgeAttributes)
 
     let attributes: [NSAttributedString.Key: Any] = [
         .font: NSFont.systemFont(ofSize: 13, weight: .medium),

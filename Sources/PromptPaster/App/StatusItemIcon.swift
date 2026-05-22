@@ -2,11 +2,10 @@ import AppKit
 
 enum StatusItemIcon {
     static let accessibilityDescription = "Prompt Paster"
-    static let title = "Prompt Paster"
+    static let title = "PP"
     static let symbolName = "text.bubble.fill"
     static let pointSize: CGFloat = 16
-    static let titlePointSize: CGFloat = 13
-    static let statusItemLength: CGFloat = 108
+    static let statusItemLength: CGFloat = 34
 
     static func makeMenuBarImage() -> NSImage {
         let symbolImage = NSImage(
@@ -20,13 +19,4 @@ enum StatusItemIcon {
         return image
     }
 
-    static func makeMenuBarTitle() -> NSAttributedString {
-        NSAttributedString(
-            string: title,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: titlePointSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor
-            ]
-        )
-    }
 }
