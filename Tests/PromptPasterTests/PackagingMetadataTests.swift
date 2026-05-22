@@ -25,6 +25,7 @@ final class PackagingMetadataTests: XCTestCase {
             "build-app.sh",
             "build-dmg.sh",
             "generate-app-icon.sh",
+            "generate-status-icon-preview.sh",
             "validate-release-package.sh"
         ]
 

@@ -15,6 +15,7 @@ Sources/PromptPaster/
   App/
     AppDelegate.swift
     PromptPasterApp.swift
+    StatusItemIcon.swift
   Models/
     Prompt.swift
     PromptLibrary.swift
@@ -49,6 +50,7 @@ scripts/
   build-app.sh
   build-dmg.sh
   generate-app-icon.sh
+  generate-status-icon-preview.sh
   validate-release-package.sh
 ```
 
@@ -56,6 +58,7 @@ scripts/
 
 - App entrypoint: `Sources/PromptPaster/App/PromptPasterApp.swift`
 - App delegate and menu actions: `Sources/PromptPaster/App/AppDelegate.swift`
+- Menu-bar template icon drawing: `Sources/PromptPaster/App/StatusItemIcon.swift`
 - Overlay window management: `Sources/PromptPaster/Overlay/OverlayWindowController.swift`
 - Overlay UI and keyboard selection state: `Sources/PromptPaster/Overlay/PromptOverlayView.swift`
 - Pure overlay state helpers: `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
@@ -96,6 +99,7 @@ Default user library path:
 - Local `.app` builder: `scripts/build-app.sh`
 - Local DMG builder: `scripts/build-dmg.sh`
 - Icon regeneration helper: `scripts/generate-app-icon.sh`
+- Menu-bar icon preview helper: `scripts/generate-status-icon-preview.sh`
 - DMG structure and optional launch validator: `scripts/validate-release-package.sh`
 - Build output is ignored under `.build/` and `dist/`.
 
