@@ -18,6 +18,7 @@ Sources/PromptPaster/
     PromptLibrary.swift
   Services/
     ClipboardService.swift
+    HotkeyController.swift
     PromptLibraryCoding.swift
     PromptSearch.swift
     PromptStore.swift
@@ -52,6 +53,7 @@ scripts/
 - Overlay window management: `Sources/PromptPaster/Overlay/OverlayWindowController.swift`
 - Overlay UI and keyboard selection state: `Sources/PromptPaster/Overlay/PromptOverlayView.swift`
 - Pure overlay state helpers: `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
+- Fallback global hotkey registration: `Sources/PromptPaster/Services/HotkeyController.swift`
 
 ## Data Model and Storage
 
@@ -67,9 +69,10 @@ Default user library path:
 ~/Library/Application Support/Prompt Paster/prompts.json
 ```
 
-## Search and Overlay Behavior
+## Search, Hotkey, and Overlay Behavior
 
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
+- Fallback global hotkey: `Control + Option + Space` through `HotkeyController`.
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse, search, filter, navigate, copy selected prompts,
   close after successful copy, and keep the overlay open on clipboard failure.

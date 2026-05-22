@@ -2,16 +2,22 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling {
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
     private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
     private lazy var settingsController = SettingsWindowController(promptStore: promptStore)
+    private lazy var hotkeyController = HotkeyController(handler: self)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         promptStore.load()
         configureStatusItem()
+        startFallbackHotkey()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        hotkeyController.stop()
     }
 
     private func configureStatusItem() {
@@ -29,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
 
         menu.addItem(
-            withTitle: "Open Prompt Paster",
+            withTitle: "Open Prompt Paster (Control + Option + Space)",
             action: #selector(openPromptPaster),
             keyEquivalent: ""
         )
@@ -63,6 +69,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    func handleHotkeyTrigger() {
+        overlayController.toggle()
+    }
+
     @objc private func openPromptPaster() {
         overlayController.show()
     }
@@ -93,5 +103,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    private func startFallbackHotkey() {
+        do {
+            try hotkeyController.start()
+        } catch {
+            NSLog("Prompt Paster fallback hotkey unavailable: \(error.localizedDescription)")
+        }
     }
 }

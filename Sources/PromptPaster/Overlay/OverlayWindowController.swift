@@ -13,6 +13,18 @@ final class OverlayWindowController {
         self.clipboard = clipboard
     }
 
+    var isVisible: Bool {
+        panel?.isVisible == true
+    }
+
+    func toggle() {
+        if isVisible {
+            hide()
+        } else {
+            show()
+        }
+    }
+
     func show(message: String? = nil) {
         let panel = panel ?? makePanel()
         self.panel = panel
