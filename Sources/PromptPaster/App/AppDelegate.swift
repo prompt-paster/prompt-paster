@@ -5,8 +5,12 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling {
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
+    private var fallbackHotkeyStatusMessage: String?
     private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
-    private lazy var settingsController = SettingsWindowController(promptStore: promptStore)
+    private lazy var settingsController = SettingsWindowController(
+        promptStore: promptStore,
+        fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage
+    )
     private lazy var hotkeyController = HotkeyController(handler: self)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -35,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         let menu = NSMenu()
 
         menu.addItem(
-            withTitle: "Open Prompt Paster (Control + Option + Space)",
+            withTitle: "Open Prompt Paster (\(HotkeyDisplay.fallbackShortcut))",
             action: #selector(openPromptPaster),
             keyEquivalent: ""
         )
@@ -78,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     }
 
     @objc private func openSettings() {
+        settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         settingsController.show()
     }
 
@@ -108,7 +113,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private func startFallbackHotkey() {
         do {
             try hotkeyController.start()
+            fallbackHotkeyStatusMessage = nil
         } catch {
+            fallbackHotkeyStatusMessage = "Fallback hotkey unavailable. \(error.localizedDescription)"
             NSLog("Prompt Paster fallback hotkey unavailable: \(error.localizedDescription)")
         }
     }

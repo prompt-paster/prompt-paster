@@ -4,6 +4,10 @@ import Foundation
 private let promptPasterHotKeySignature: OSType = 0x5050_484B
 private let promptPasterFallbackHotKeyID: UInt32 = 1
 
+enum HotkeyDisplay {
+    static let fallbackShortcut = HotkeyShortcut.controlOptionSpace.displayName
+}
+
 struct HotkeyShortcut: Equatable {
     let keyCode: UInt32
     let modifiers: UInt32
@@ -48,34 +52,148 @@ enum HotkeyControllerError: Error, LocalizedError, Equatable {
     }
 }
 
+protocol HotkeyRegistrar {
+    associatedtype HandlerToken
+    associatedtype HotkeyToken
+
+    func installHandler(
+        target: HotkeyController,
+        callback: EventHandlerUPP
+    ) throws -> HandlerToken
+
+    func registerHotkey(
+        shortcut: HotkeyShortcut,
+        signature: OSType,
+        id: UInt32
+    ) throws -> HotkeyToken
+
+    func removeHandler(_ token: HandlerToken)
+    func unregisterHotkey(_ token: HotkeyToken)
+}
+
 @MainActor
 final class HotkeyController {
     private let shortcut: HotkeyShortcut
     private let router: HotkeyTriggerRouter
-    private var eventHandlerRef: EventHandlerRef?
-    private var hotKeyRef: EventHotKeyRef?
+    private let registrationState: HotkeyRegistrationState
 
     init(
         shortcut: HotkeyShortcut = .controlOptionSpace,
-        handler: HotkeyTriggerHandling
+        handler: HotkeyTriggerHandling,
+        registrar: AnyHotkeyRegistrar = AnyHotkeyRegistrar(CarbonHotkeyRegistrar())
     ) {
         self.shortcut = shortcut
         self.router = HotkeyTriggerRouter(handler: handler)
+        self.registrationState = HotkeyRegistrationState(registrar: registrar)
     }
 
     func start() throws {
-        guard hotKeyRef == nil else {
+        guard !registrationState.isRegistered else {
             return
         }
 
-        if eventHandlerRef == nil {
+        if !registrationState.hasHandler {
             try installEventHandler()
         }
 
-        let hotKeyID = EventHotKeyID(
-            signature: promptPasterHotKeySignature,
-            id: promptPasterFallbackHotKeyID
+        do {
+            registrationState.hotKeyRef = try registrationState.registrar.registerHotkey(
+                shortcut: shortcut,
+                signature: promptPasterHotKeySignature,
+                id: promptPasterFallbackHotKeyID
+            )
+        } catch {
+            registrationState.removeHandler()
+            throw error
+        }
+    }
+
+    func stop() {
+        registrationState.stop()
+    }
+
+    fileprivate func handleRegisteredHotkey() {
+        router.handleTrigger()
+    }
+
+    private func installEventHandler() throws {
+        registrationState.eventHandlerRef = try registrationState.registrar.installHandler(
+            target: self,
+            callback: promptPasterHotKeyHandler
         )
+    }
+}
+
+private final class HotkeyRegistrationState {
+    let registrar: AnyHotkeyRegistrar
+    var eventHandlerRef: Any?
+    var hotKeyRef: Any?
+
+    var hasHandler: Bool {
+        eventHandlerRef != nil
+    }
+
+    var isRegistered: Bool {
+        hotKeyRef != nil
+    }
+
+    init(registrar: AnyHotkeyRegistrar) {
+        self.registrar = registrar
+    }
+
+    deinit {
+        stop()
+    }
+
+    func stop() {
+        if let hotKeyRef {
+            registrar.unregisterHotkey(hotKeyRef)
+        }
+        hotKeyRef = nil
+
+        removeHandler()
+    }
+
+    func removeHandler() {
+        if let eventHandlerRef {
+            registrar.removeHandler(eventHandlerRef)
+        }
+        eventHandlerRef = nil
+    }
+}
+
+struct CarbonHotkeyRegistrar: HotkeyRegistrar {
+    func installHandler(
+        target: HotkeyController,
+        callback: EventHandlerUPP
+    ) throws -> EventHandlerRef {
+        var eventSpec = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        var installedHandlerRef: EventHandlerRef?
+        let status = InstallEventHandler(
+            GetApplicationEventTarget(),
+            callback,
+            1,
+            &eventSpec,
+            Unmanaged.passUnretained(target).toOpaque(),
+            &installedHandlerRef
+        )
+
+        guard status == noErr, let installedHandlerRef else {
+            throw HotkeyControllerError.handlerInstallFailed(status)
+        }
+
+        return installedHandlerRef
+    }
+
+    func registerHotkey(
+        shortcut: HotkeyShortcut,
+        signature: OSType,
+        id: UInt32
+    ) throws -> EventHotKeyRef {
+        let hotKeyID = EventHotKeyID(signature: signature, id: id)
         var registeredHotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
             shortcut.keyCode,
@@ -90,49 +208,70 @@ final class HotkeyController {
             throw HotkeyControllerError.registrationFailed(status)
         }
 
-        hotKeyRef = registeredHotKeyRef
+        return registeredHotKeyRef
     }
 
-    func stop() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-        }
-        hotKeyRef = nil
-
-        if let eventHandlerRef {
-            RemoveEventHandler(eventHandlerRef)
-        }
-        eventHandlerRef = nil
+    func removeHandler(_ token: EventHandlerRef) {
+        RemoveEventHandler(token)
     }
 
-    fileprivate func handleRegisteredHotkey() {
-        router.handleTrigger()
-    }
-
-    private func installEventHandler() throws {
-        var eventSpec = EventTypeSpec(
-            eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed)
-        )
-        var installedHandlerRef: EventHandlerRef?
-        let status = InstallEventHandler(
-            GetApplicationEventTarget(),
-            promptPasterHotKeyHandler,
-            1,
-            &eventSpec,
-            Unmanaged.passUnretained(self).toOpaque(),
-            &installedHandlerRef
-        )
-
-        guard status == noErr, let installedHandlerRef else {
-            throw HotkeyControllerError.handlerInstallFailed(status)
-        }
-
-        eventHandlerRef = installedHandlerRef
+    func unregisterHotkey(_ token: EventHotKeyRef) {
+        UnregisterEventHotKey(token)
     }
 }
 
-private let promptPasterHotKeyHandler: EventHandlerUPP = { _, event, userData in
+struct AnyHotkeyRegistrar: HotkeyRegistrar {
+    private let installHandlerClosure: (HotkeyController, EventHandlerUPP) throws -> Any
+    private let registerHotkeyClosure: (HotkeyShortcut, OSType, UInt32) throws -> Any
+    private let removeHandlerClosure: (Any) -> Void
+    private let unregisterHotkeyClosure: (Any) -> Void
+
+    init<Registrar: HotkeyRegistrar>(_ registrar: Registrar) {
+        installHandlerClosure = { target, callback in
+            try registrar.installHandler(target: target, callback: callback)
+        }
+        registerHotkeyClosure = { shortcut, signature, id in
+            try registrar.registerHotkey(shortcut: shortcut, signature: signature, id: id)
+        }
+        removeHandlerClosure = { token in
+            guard let typedToken = token as? Registrar.HandlerToken else {
+                return
+            }
+            registrar.removeHandler(typedToken)
+        }
+        unregisterHotkeyClosure = { token in
+            guard let typedToken = token as? Registrar.HotkeyToken else {
+                return
+            }
+            registrar.unregisterHotkey(typedToken)
+        }
+    }
+
+    func installHandler(
+        target: HotkeyController,
+        callback: EventHandlerUPP
+    ) throws -> Any {
+        try installHandlerClosure(target, callback)
+    }
+
+    func registerHotkey(
+        shortcut: HotkeyShortcut,
+        signature: OSType,
+        id: UInt32
+    ) throws -> Any {
+        try registerHotkeyClosure(shortcut, signature, id)
+    }
+
+    func removeHandler(_ token: Any) {
+        removeHandlerClosure(token)
+    }
+
+    func unregisterHotkey(_ token: Any) {
+        unregisterHotkeyClosure(token)
+    }
+}
+
+let promptPasterHotKeyHandler: EventHandlerUPP = { _, event, userData in
     guard let event, let userData else {
         return noErr
     }

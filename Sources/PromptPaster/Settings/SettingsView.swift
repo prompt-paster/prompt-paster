@@ -3,12 +3,24 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
+    let fallbackHotkeyStatusMessage: String?
+
+    init(promptStore: PromptStore, fallbackHotkeyStatusMessage: String? = nil) {
+        self.promptStore = promptStore
+        self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
+    }
 
     var body: some View {
         Form {
             Section("Trigger") {
                 LabeledContent("Primary trigger", value: "Double Control")
-                LabeledContent("Fallback hotkey", value: "Control + Option + Space")
+                LabeledContent("Fallback hotkey", value: HotkeyDisplay.fallbackShortcut)
+
+                if let fallbackHotkeyStatusMessage {
+                    Text(fallbackHotkeyStatusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
             }
 
             Section("Prompt Library") {

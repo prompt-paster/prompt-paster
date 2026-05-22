@@ -5,9 +5,20 @@ import SwiftUI
 final class SettingsWindowController {
     private var window: NSWindow?
     private let promptStore: PromptStore
+    var fallbackHotkeyStatusMessage: String? {
+        didSet {
+            window?.contentView = NSHostingView(
+                rootView: SettingsView(
+                    promptStore: promptStore,
+                    fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage
+                )
+            )
+        }
+    }
 
-    init(promptStore: PromptStore) {
+    init(promptStore: PromptStore, fallbackHotkeyStatusMessage: String? = nil) {
         self.promptStore = promptStore
+        self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
     }
 
     func show() {
@@ -27,7 +38,12 @@ final class SettingsWindowController {
         )
         window.title = "Prompt Paster Settings"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView(promptStore: promptStore))
+        window.contentView = NSHostingView(
+            rootView: SettingsView(
+                promptStore: promptStore,
+                fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage
+            )
+        )
         return window
     }
 }
