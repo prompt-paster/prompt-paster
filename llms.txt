@@ -1,0 +1,97 @@
+# Prompt Paster LLM Index
+
+Prompt Paster is a native macOS menu-bar utility for selecting reusable coding
+agent prompts from an overlay and copying them to the clipboard.
+
+## Core Tree
+
+```text
+Package.swift
+Packaging/
+  Info.plist
+Sources/PromptPaster/
+  App/
+    AppDelegate.swift
+    PromptPasterApp.swift
+  Models/
+    Prompt.swift
+    PromptLibrary.swift
+  Services/
+    PromptLibraryCoding.swift
+    PromptSearch.swift
+    PromptStore.swift
+  Overlay/
+    OverlayKeyCaptureView.swift
+    OverlayWindowController.swift
+    PromptOverlayState.swift
+    PromptOverlayView.swift
+  Resources/
+    SeedPrompts.json
+  Settings/
+    SettingsView.swift
+    SettingsWindowController.swift
+Tests/PromptPasterTests/
+  PromptLibraryTests.swift
+  PromptOverlayStateTests.swift
+  PromptSearchTests.swift
+  PromptStoreTests.swift
+docs/
+  design-architecture-spec.md
+  implementation-plan.md
+  review-recommendations.md
+scripts/
+  build-app.sh
+```
+
+## Critical Entry Points
+
+- App entrypoint: `Sources/PromptPaster/App/PromptPasterApp.swift`
+- App delegate and menu actions: `Sources/PromptPaster/App/AppDelegate.swift`
+- Overlay window management: `Sources/PromptPaster/Overlay/OverlayWindowController.swift`
+- Overlay UI and keyboard selection state: `Sources/PromptPaster/Overlay/PromptOverlayView.swift`
+- Pure overlay state helpers: `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
+
+## Data Model and Storage
+
+- Prompt model: `Sources/PromptPaster/Models/Prompt.swift`
+- Prompt library schema and validation: `Sources/PromptPaster/Models/PromptLibrary.swift`
+- JSON encoder/decoder setup: `Sources/PromptPaster/Services/PromptLibraryCoding.swift`
+- Application Support prompt store: `Sources/PromptPaster/Services/PromptStore.swift`
+- Bundled seed data: `Sources/PromptPaster/Resources/SeedPrompts.json`
+
+Default user library path:
+
+```text
+~/Library/Application Support/Prompt Paster/prompts.json
+```
+
+## Search and Overlay Behavior
+
+- Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
+- Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
+- Current overlay scope: browse, search, filter, navigate, and acknowledge prompts.
+- Clipboard copy-and-close is the next planned feature and is not implemented yet.
+
+## Configuration and Packaging
+
+- SwiftPM configuration: `Package.swift`
+- App bundle metadata: `Packaging/Info.plist`
+- Local `.app` builder: `scripts/build-app.sh`
+- Build output is ignored under `.build/` and `dist/`.
+
+## Planning and Agent Context
+
+- Static agent rules: `AGENTS.md`
+- Dynamic agent state: `.agent-plan.md`
+- Product/design spec: `docs/design-architecture-spec.md`
+- Implementation roadmap: `docs/implementation-plan.md`
+- Prior app-shell review rationale: `docs/review-recommendations.md`
+
+## Standard Validation
+
+```bash
+swift build
+swift test
+scripts/build-app.sh
+plutil -lint Packaging/Info.plist
+```
