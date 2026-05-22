@@ -15,8 +15,9 @@ final class StatusItemIconTests: XCTestCase {
     func testMenuBarTitleProvidesTextFallback() {
         let title = StatusItemIcon.makeMenuBarTitle()
 
-        XCTAssertEqual(title.string, "PP")
+        XCTAssertEqual(title.string, "Prompt Paster")
         XCTAssertEqual(StatusItemIcon.titlePointSize, 13)
+        XCTAssertEqual(StatusItemIcon.statusItemLength, 108)
         XCTAssertNotNil(title.attribute(.font, at: 0, effectiveRange: nil))
         XCTAssertNotNil(title.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
