@@ -10,7 +10,7 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(HotkeyShortcut.controlOptionSpace.displayName, "Control + Option + Space")
         XCTAssertEqual(HotkeyDisplay.fallbackShortcut, "Control + Option + Space")
         XCTAssertEqual(HotkeyDisplay.doubleControlShortcut, "Double Control")
-        XCTAssertEqual(HotkeyDisplay.doubleControlThreshold, "350 ms")
+        XCTAssertEqual(HotkeyDisplay.doubleControlThreshold(350), "350 ms")
     }
 
     func testTriggerRouterForwardsHotkeyTriggerToHandler() {
@@ -40,6 +40,25 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(registrar.registeredShortcut, .controlOptionSpace)
         XCTAssertEqual(monitor.startCount, 1)
         XCTAssertEqual(status.doubleControlStatus, .active)
+    }
+
+    func testFallbackOnlyModeRegistersHotkeyWithoutStartingDoubleControlMonitor() throws {
+        let registrar = FakeHotkeyRegistrar()
+        let monitor = FakeDoubleControlMonitor()
+        let controller = HotkeyController(
+            triggerMode: .fallbackHotkeyOnly,
+            handler: FakeHotkeyHandler(),
+            registrar: AnyHotkeyRegistrar(registrar),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(isAccessibilityTrusted: true)
+        )
+
+        let status = try controller.start()
+
+        XCTAssertEqual(registrar.registerHotkeyCount, 1)
+        XCTAssertEqual(monitor.startCount, 0)
+        XCTAssertEqual(monitor.stopCount, 1)
+        XCTAssertEqual(status.doubleControlStatus, .disabled)
     }
 
     func testStartIsIdempotentWhileRegistered() throws {

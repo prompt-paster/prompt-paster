@@ -8,7 +8,10 @@ private let promptPasterFallbackHotKeyID: UInt32 = 1
 enum HotkeyDisplay {
     static let fallbackShortcut = HotkeyShortcut.controlOptionSpace.displayName
     static let doubleControlShortcut = "Double Control"
-    static let doubleControlThreshold = "350 ms"
+
+    static func doubleControlThreshold(_ milliseconds: Int) -> String {
+        "\(milliseconds) ms"
+    }
 }
 
 struct HotkeyShortcut: Equatable {
@@ -142,6 +145,7 @@ struct HotkeyStartupStatus: Equatable {
 
 enum DoubleControlTriggerStatus: Equatable {
     case active
+    case disabled
     case needsAccessibility
     case monitorUnavailable(String)
 
@@ -149,6 +153,8 @@ enum DoubleControlTriggerStatus: Equatable {
         switch self {
         case .active:
             "Active"
+        case .disabled:
+            "Disabled"
         case .needsAccessibility:
             "Needs Accessibility"
         case .monitorUnavailable:
@@ -160,6 +166,8 @@ enum DoubleControlTriggerStatus: Equatable {
         switch self {
         case .active:
             nil
+        case .disabled:
+            "Double Control is disabled. The fallback hotkey remains available."
         case .needsAccessibility:
             "Double Control needs Accessibility permission. Grant permission in System Settings, then recheck permission. The fallback hotkey remains available."
         case let .monitorUnavailable(message):
@@ -230,6 +238,7 @@ protocol DoubleControlMonitoring: AnyObject {
 @MainActor
 final class HotkeyController {
     private let shortcut: HotkeyShortcut
+    private let triggerMode: TriggerMode
     private let router: HotkeyTriggerRouter
     private let registrationState: HotkeyRegistrationState
     private let doubleControlMonitor: DoubleControlMonitoring
@@ -238,6 +247,7 @@ final class HotkeyController {
 
     init(
         shortcut: HotkeyShortcut = .controlOptionSpace,
+        triggerMode: TriggerMode = .doubleControlWithFallback,
         handler: HotkeyTriggerHandling,
         registrar: AnyHotkeyRegistrar = AnyHotkeyRegistrar(CarbonHotkeyRegistrar()),
         doubleControlMonitor: DoubleControlMonitoring = CGEventDoubleControlMonitor(),
@@ -245,6 +255,7 @@ final class HotkeyController {
         doubleControlConfiguration: DoubleControlTapConfiguration = .default
     ) {
         self.shortcut = shortcut
+        self.triggerMode = triggerMode
         self.router = HotkeyTriggerRouter(handler: handler)
         self.registrationState = HotkeyRegistrationState(registrar: registrar)
         self.doubleControlMonitor = doubleControlMonitor
@@ -273,7 +284,7 @@ final class HotkeyController {
             throw error
         }
 
-        return startDoubleControlMonitoring()
+        return startDoubleControlMonitoringIfEnabled()
     }
 
     func stop() {
@@ -296,7 +307,7 @@ final class HotkeyController {
             )
         }
 
-        return startDoubleControlMonitoring()
+        return startDoubleControlMonitoringIfEnabled()
     }
 
     fileprivate func handleRegisteredHotkey() {
@@ -310,7 +321,15 @@ final class HotkeyController {
         )
     }
 
-    private func startDoubleControlMonitoring() -> HotkeyStartupStatus {
+    private func startDoubleControlMonitoringIfEnabled() -> HotkeyStartupStatus {
+        guard triggerMode == .doubleControlWithFallback else {
+            doubleControlMonitor.stop()
+            return HotkeyStartupStatus(
+                fallbackHotkeyStatusMessage: nil,
+                doubleControlStatus: .disabled
+            )
+        }
+
         if doubleControlMonitor.isRunning {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
@@ -351,6 +370,14 @@ final class HotkeyController {
     }
 
     private func statusForCurrentDoubleControlPermission() -> HotkeyStartupStatus {
+        guard triggerMode == .doubleControlWithFallback else {
+            doubleControlMonitor.stop()
+            return HotkeyStartupStatus(
+                fallbackHotkeyStatusMessage: nil,
+                doubleControlStatus: .disabled
+            )
+        }
+
         if doubleControlMonitor.isRunning {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
@@ -365,7 +392,7 @@ final class HotkeyController {
             )
         }
 
-        return startDoubleControlMonitoring()
+        return startDoubleControlMonitoringIfEnabled()
     }
 }
 

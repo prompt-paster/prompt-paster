@@ -5,6 +5,8 @@ import SwiftUI
 final class SettingsWindowController {
     private var window: NSWindow?
     private let promptStore: PromptStore
+    private let settingsStore: SettingsStore
+    private let settingsChanged: () -> Void
     private let openAccessibilitySettings: () -> Void
     private let requestAccessibilityPermission: () -> Void
     var fallbackHotkeyStatusMessage: String? {
@@ -20,16 +22,25 @@ final class SettingsWindowController {
 
     init(
         promptStore: PromptStore,
+        settingsStore: SettingsStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
+        settingsChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
         requestAccessibilityPermission: @escaping () -> Void = {}
     ) {
         self.promptStore = promptStore
+        self.settingsStore = settingsStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
+        self.settingsChanged = settingsChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        settingsStore.refreshLaunchAtLoginStatus()
+        refreshContentView()
     }
 
     func show() {
@@ -60,8 +71,10 @@ final class SettingsWindowController {
     private func makeSettingsView() -> SettingsView {
         SettingsView(
             promptStore: promptStore,
+            settingsStore: settingsStore,
             fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
             doubleControlStatus: doubleControlStatus,
+            settingsChanged: settingsChanged,
             openAccessibilitySettings: openAccessibilitySettings,
             requestAccessibilityPermission: requestAccessibilityPermission
         )

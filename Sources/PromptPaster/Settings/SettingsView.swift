@@ -3,21 +3,27 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
+    @ObservedObject var settingsStore: SettingsStore
     let fallbackHotkeyStatusMessage: String?
     let doubleControlStatus: DoubleControlTriggerStatus
+    let settingsChanged: () -> Void
     let openAccessibilitySettings: () -> Void
     let requestAccessibilityPermission: () -> Void
 
     init(
         promptStore: PromptStore,
+        settingsStore: SettingsStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
+        settingsChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
         requestAccessibilityPermission: @escaping () -> Void = {}
     ) {
         self.promptStore = promptStore
+        self.settingsStore = settingsStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
+        self.settingsChanged = settingsChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
     }
@@ -25,12 +31,30 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Trigger") {
+                Picker("Primary trigger", selection: $settingsStore.triggerMode) {
+                    ForEach(TriggerMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+
                 LabeledContent("Fallback hotkey", value: HotkeyDisplay.fallbackShortcut)
                 LabeledContent(
                     HotkeyDisplay.doubleControlShortcut,
                     value: doubleControlStatus.displayValue
                 )
-                LabeledContent("Double Control timing", value: HotkeyDisplay.doubleControlThreshold)
+                Stepper(
+                    "Double Control timing: \(settingsStore.doubleControlThresholdDisplayValue)",
+                    value: Binding(
+                        get: {
+                            settingsStore.doubleControlThresholdMilliseconds
+                        },
+                        set: { threshold in
+                            settingsStore.setDoubleControlThresholdMilliseconds(threshold)
+                        }
+                    ),
+                    in: SettingsStore.minimumDoubleControlThresholdMilliseconds...SettingsStore.maximumDoubleControlThresholdMilliseconds,
+                    step: 25
+                )
 
                 if let fallbackHotkeyStatusMessage {
                     Text(fallbackHotkeyStatusMessage)
@@ -58,6 +82,12 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onChange(of: settingsStore.triggerMode) { _, _ in
+                settingsChanged()
+            }
+            .onChange(of: settingsStore.doubleControlThresholdMilliseconds) { _, _ in
+                settingsChanged()
+            }
 
             Section("Prompt Library") {
                 LabeledContent("Storage", value: promptStore.libraryURL.path)
@@ -82,12 +112,30 @@ struct SettingsView: View {
                     Button("Reload Library") {
                         promptStore.reload()
                     }
+
+                    Button("Reveal in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([promptStore.libraryURL])
+                    }
                 }
             }
 
             Section("App") {
-                LabeledContent("Launch at login", value: "Planned")
+                Toggle("Launch at login", isOn: Binding(
+                    get: {
+                        settingsStore.launchAtLoginEnabled
+                    },
+                    set: { isEnabled in
+                        settingsStore.setLaunchAtLoginEnabled(isEnabled)
+                    }
+                ))
+                Toggle("Show copied confirmation", isOn: $settingsStore.showCopiedConfirmation)
                 LabeledContent("Dock icon", value: "Hidden")
+
+                if let launchAtLoginErrorMessage = settingsStore.launchAtLoginErrorMessage {
+                    Text(launchAtLoginErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
             }
         }
         .formStyle(.grouped)

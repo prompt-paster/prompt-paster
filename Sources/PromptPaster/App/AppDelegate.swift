@@ -5,13 +5,18 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling {
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
+    private let settingsStore = SettingsStore()
     private var fallbackHotkeyStatusMessage: String?
     private var doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility
     private lazy var overlayController = OverlayWindowController(promptStore: promptStore)
     private lazy var settingsController = SettingsWindowController(
         promptStore: promptStore,
+        settingsStore: settingsStore,
         fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
         doubleControlStatus: doubleControlStatus,
+        settingsChanged: { [weak self] in
+            self?.restartHotkeys()
+        },
         openAccessibilitySettings: { [weak self] in
             self?.hotkeyController.openAccessibilitySettings()
         },
@@ -19,17 +24,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
             self?.requestAccessibilityPermission()
         }
     )
-    private lazy var hotkeyController = HotkeyController(handler: self)
+    private var hotkeyController: HotkeyController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         promptStore.load()
         configureStatusItem()
-        startFallbackHotkey()
+        startHotkeys()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        hotkeyController.stop()
+        hotkeyController?.stop()
     }
 
     private func configureStatusItem() {
@@ -92,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     @objc private func openSettings() {
         settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         settingsController.doubleControlStatus = doubleControlStatus
+        settingsController.refreshLaunchAtLoginStatus()
         settingsController.show()
     }
 
@@ -119,7 +125,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         NSApp.terminate(nil)
     }
 
-    private func startFallbackHotkey() {
+    private func startHotkeys() {
+        hotkeyController = HotkeyController(
+            triggerMode: settingsStore.triggerMode,
+            handler: self,
+            doubleControlConfiguration: settingsStore.doubleControlConfiguration
+        )
+
         do {
             let status = try hotkeyController.start()
             applyHotkeyStatus(status)
@@ -128,6 +140,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
             doubleControlStatus = .monitorUnavailable("Double Control not started because fallback hotkey registration failed.")
             NSLog("Prompt Paster fallback hotkey unavailable: \(error.localizedDescription)")
         }
+    }
+
+    private func restartHotkeys() {
+        hotkeyController?.stop()
+        startHotkeys()
+        settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
+        settingsController.doubleControlStatus = doubleControlStatus
     }
 
     private func requestAccessibilityPermission() {
