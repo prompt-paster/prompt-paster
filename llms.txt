@@ -15,6 +15,7 @@ Sources/PromptPaster/
   App/
     AppDelegate.swift
     PromptPasterApp.swift
+    StatusItemIcon.swift
   Models/
     Prompt.swift
     PromptLibrary.swift
@@ -56,6 +57,7 @@ scripts/
 
 - App entrypoint: `Sources/PromptPaster/App/PromptPasterApp.swift`
 - App delegate and menu actions: `Sources/PromptPaster/App/AppDelegate.swift`
+- Menu-bar template icon drawing: `Sources/PromptPaster/App/StatusItemIcon.swift`
 - Overlay window management: `Sources/PromptPaster/Overlay/OverlayWindowController.swift`
 - Overlay UI and keyboard selection state: `Sources/PromptPaster/Overlay/PromptOverlayView.swift`
 - Pure overlay state helpers: `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
