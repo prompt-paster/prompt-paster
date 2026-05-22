@@ -32,6 +32,12 @@ struct PromptOverlayState {
     static let promptCardSpacing: CGFloat = 10
     static let promptCardMaximumColumnCount = 6
 
+    private struct SpatialShortcutKey {
+        let key: String
+        let row: Int
+        let column: Double
+    }
+
     static func visiblePrompts(
         prompts: [Prompt],
         query: String,
@@ -301,7 +307,7 @@ struct PromptOverlayState {
         var usedKeys = Set<String>()
 
         return layout.compactMap { item in
-            let candidates = spatialLetterCandidates(
+            let candidates = spatialLetterCandidatesByKeyboardDistance(
                 for: item,
                 maxRow: maxRow,
                 availableColumns: max(1, availableColumns)
@@ -314,43 +320,99 @@ struct PromptOverlayState {
         }
     }
 
-    private static func spatialLetterCandidates(
+    private static func spatialLetterCandidatesByKeyboardDistance(
         for item: PromptOverlayCardLayoutItem,
         maxRow: Int,
         availableColumns: Int
     ) -> [String] {
-        let keyRow = spatialKeyboardRow(for: item.row, maxRow: maxRow)
+        let preferredKeyboardRow = spatialKeyboardRow(for: item.row, maxRow: maxRow)
+        let keyboardRows = spatialKeyboardRows()
+        let preferredKeys = keyboardRows.filter { $0.row == preferredKeyboardRow }
+
         let denominator = max(1, availableColumns - 1)
         let normalizedColumn = (item.centerColumn - 0.5) / Double(denominator)
         let clampedColumn = min(1, max(0, normalizedColumn))
-        let targetIndex = clampedColumn * Double(max(0, keyRow.count - 1))
+        let targetColumn = targetKeyboardColumn(
+            normalizedColumn: clampedColumn,
+            keys: preferredKeys
+        )
 
-        return keyRow.enumerated()
+        return keyboardRows
             .sorted { lhs, rhs in
-                let lhsDistance = abs(Double(lhs.offset) - targetIndex)
-                let rhsDistance = abs(Double(rhs.offset) - targetIndex)
+                let lhsDistance = spatialDistance(
+                    from: lhs,
+                    preferredRow: preferredKeyboardRow,
+                    targetColumn: targetColumn
+                )
+                let rhsDistance = spatialDistance(
+                    from: rhs,
+                    preferredRow: preferredKeyboardRow,
+                    targetColumn: targetColumn
+                )
                 if lhsDistance == rhsDistance {
-                    return lhs.offset < rhs.offset
+                    let lhsIndex = keyboardRows.firstIndex(where: { $0.key == lhs.key }) ?? 0
+                    let rhsIndex = keyboardRows.firstIndex(where: { $0.key == rhs.key }) ?? 0
+                    return lhsIndex < rhsIndex
                 }
                 return lhsDistance < rhsDistance
             }
-            .map(\.element)
+            .map(\.key)
     }
 
-    private static func spatialKeyboardRow(for row: Int, maxRow: Int) -> [String] {
+    private static func spatialKeyboardRow(for row: Int, maxRow: Int) -> Int {
         if maxRow == 0 {
-            return ["f", "g", "h", "j", "k"]
+            return 1
         }
 
         if row == 0 {
-            return ["r", "t", "y", "u", "i"]
+            return 0
         }
 
         if row == maxRow, maxRow >= 2 {
-            return ["v", "b", "n", "m"]
+            return 2
         }
 
-        return ["f", "g", "h", "j", "k"]
+        return 1
+    }
+
+    private static func spatialKeyboardRows() -> [SpatialShortcutKey] {
+        [
+            SpatialShortcutKey(key: "r", row: 0, column: 0),
+            SpatialShortcutKey(key: "t", row: 0, column: 1),
+            SpatialShortcutKey(key: "y", row: 0, column: 2),
+            SpatialShortcutKey(key: "u", row: 0, column: 3),
+            SpatialShortcutKey(key: "i", row: 0, column: 4),
+            SpatialShortcutKey(key: "f", row: 1, column: 0),
+            SpatialShortcutKey(key: "g", row: 1, column: 1),
+            SpatialShortcutKey(key: "h", row: 1, column: 2),
+            SpatialShortcutKey(key: "j", row: 1, column: 3),
+            SpatialShortcutKey(key: "k", row: 1, column: 4),
+            SpatialShortcutKey(key: "l", row: 1, column: 5),
+            SpatialShortcutKey(key: "v", row: 2, column: 0),
+            SpatialShortcutKey(key: "b", row: 2, column: 1),
+            SpatialShortcutKey(key: "n", row: 2, column: 2),
+            SpatialShortcutKey(key: "m", row: 2, column: 3)
+        ]
+    }
+
+    private static func targetKeyboardColumn(
+        normalizedColumn: Double,
+        keys: [SpatialShortcutKey]
+    ) -> Double {
+        let columns = keys.map(\.column)
+        let minimumColumn = columns.min() ?? 0
+        let maximumColumn = columns.max() ?? minimumColumn
+        return minimumColumn + (normalizedColumn * (maximumColumn - minimumColumn))
+    }
+
+    private static func spatialDistance(
+        from key: SpatialShortcutKey,
+        preferredRow: Int,
+        targetColumn: Double
+    ) -> Double {
+        let rowDistance = abs(Double(key.row - preferredRow)) * 3
+        let columnDistance = abs(key.column - targetColumn)
+        return rowDistance + columnDistance
     }
 
     static func promptCardMinimumHeight(

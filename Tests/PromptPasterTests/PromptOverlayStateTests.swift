@@ -269,9 +269,44 @@ final class PromptOverlayStateTests: XCTestCase {
             PromptOverlayShortcutAssignment(promptID: "three", key: "i"),
             PromptOverlayShortcutAssignment(promptID: "four", key: "f"),
             PromptOverlayShortcutAssignment(promptID: "five", key: "h"),
-            PromptOverlayShortcutAssignment(promptID: "six", key: "k")
+            PromptOverlayShortcutAssignment(promptID: "six", key: "l")
         ])
         XCTAssertEqual(PromptOverlayState.promptIDForShortcut("Y", assignments: assignments), "two")
+    }
+
+    func testSpatialLetterShortcutAssignmentCoversSixColumnSingleRow() {
+        let rowPrompts = (1...6).map { index in
+            Prompt(id: "prompt-\(index)", title: "Prompt \(index)", category: nil, body: "Body")
+        }
+
+        let assignments = PromptOverlayState.shortcutAssignments(
+            for: rowPrompts,
+            availableColumns: 6,
+            previewCharacterLimit: 80,
+            mode: .spatialLetters
+        )
+
+        XCTAssertEqual(assignments.map(\.key), ["f", "g", "h", "j", "k", "l"])
+        XCTAssertEqual(assignments.count, rowPrompts.count)
+    }
+
+    func testSpatialLetterShortcutAssignmentUsesFallbackKeysWhenRowsRepeat() {
+        let manyPrompts = (1...12).map { index in
+            Prompt(id: "prompt-\(index)", title: "Prompt \(index)", category: nil, body: "Body")
+        }
+
+        let assignments = PromptOverlayState.shortcutAssignments(
+            for: manyPrompts,
+            availableColumns: 3,
+            previewCharacterLimit: 80,
+            mode: .spatialLetters
+        )
+
+        XCTAssertEqual(assignments.count, manyPrompts.count)
+        XCTAssertEqual(Set(assignments.map(\.key)).count, assignments.count)
+        XCTAssertEqual(assignments.prefix(3).map(\.key), ["r", "y", "i"])
+        XCTAssertTrue(assignments.map(\.key).contains("j"))
+        XCTAssertTrue(assignments.map(\.key).contains("m"))
     }
 
     func testNumericShortcutAssignmentPreservesOneThroughNineMode() {

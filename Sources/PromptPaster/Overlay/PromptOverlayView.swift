@@ -52,6 +52,28 @@ struct PromptOverlayView: View {
         PromptOverlayActions(clipboard: clipboard)
     }
 
+    private var shouldShowPromptShortcutBadges: Bool {
+        switch settingsStore.promptSelectionShortcutMode {
+        case .spatialLetters:
+            !isSearchFocused
+        case .numbers:
+            true
+        }
+    }
+
+    private var promptShortcutAssignments: [PromptOverlayShortcutAssignment] {
+        guard shouldShowPromptShortcutBadges else {
+            return []
+        }
+
+        return PromptOverlayState.shortcutAssignments(
+            for: visiblePrompts,
+            availableColumns: promptGridColumnCount,
+            previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+            mode: settingsStore.promptSelectionShortcutMode
+        )
+    }
+
     private var searchStrokeStyle: AnyShapeStyle {
         isSearchFocused
             ? AnyShapeStyle(Color.accentColor.opacity(0.55))
@@ -204,12 +226,6 @@ struct PromptOverlayView: View {
         } else {
             GeometryReader { proxy in
                 let columnCount = PromptOverlayState.promptCardColumnCount(for: proxy.size.width)
-                let shortcutAssignments = PromptOverlayState.shortcutAssignments(
-                    for: visiblePrompts,
-                    availableColumns: columnCount,
-                    previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
-                    mode: settingsStore.promptSelectionShortcutMode
-                )
                 ScrollView {
                     LazyVGrid(
                         columns: promptGridColumns(count: columnCount),
@@ -219,7 +235,7 @@ struct PromptOverlayView: View {
                         ForEach(Array(visiblePrompts.enumerated()), id: \.element.id) { index, prompt in
                             PromptCardView(
                                 prompt: prompt,
-                                shortcutBadge: shortcutAssignments.first { $0.promptID == prompt.id }?.badge,
+                                shortcutBadge: promptShortcutAssignments.first { $0.promptID == prompt.id }?.badge,
                                 isSelected: prompt.id == selectedPromptID,
                                 previewCharacterLimit: settingsStore.promptPreviewCharacterLimit
                             )
