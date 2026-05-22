@@ -204,6 +204,12 @@ struct PromptOverlayView: View {
         } else {
             GeometryReader { proxy in
                 let columnCount = PromptOverlayState.promptCardColumnCount(for: proxy.size.width)
+                let shortcutAssignments = PromptOverlayState.shortcutAssignments(
+                    for: visiblePrompts,
+                    availableColumns: columnCount,
+                    previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+                    mode: settingsStore.promptSelectionShortcutMode
+                )
                 ScrollView {
                     LazyVGrid(
                         columns: promptGridColumns(count: columnCount),
@@ -213,7 +219,7 @@ struct PromptOverlayView: View {
                         ForEach(Array(visiblePrompts.enumerated()), id: \.element.id) { index, prompt in
                             PromptCardView(
                                 prompt: prompt,
-                                shortcutBadge: index < 9 ? "\(index + 1)" : nil,
+                                shortcutBadge: shortcutAssignments.first { $0.promptID == prompt.id }?.badge,
                                 isSelected: prompt.id == selectedPromptID,
                                 previewCharacterLimit: settingsStore.promptPreviewCharacterLimit
                             )
@@ -276,15 +282,35 @@ struct PromptOverlayView: View {
             moveSelectionVertically(direction: -1)
             return true
         default:
-            guard let digit = event.charactersIgnoringModifiers.flatMap(Int.init),
-                  (1...9).contains(digit)
-            else {
-                return false
-            }
-
-            selectPrompt(at: digit - 1)
-            return true
+            return handlePromptShortcut(event)
         }
+    }
+
+    private func handlePromptShortcut(_ event: NSEvent) -> Bool {
+        guard let key = event.charactersIgnoringModifiers?.lowercased(),
+              key.count == 1
+        else {
+            return false
+        }
+
+        if settingsStore.promptSelectionShortcutMode == .spatialLetters,
+           isSearchFocused,
+           key.first?.isLetter == true {
+            return false
+        }
+
+        let assignments = PromptOverlayState.shortcutAssignments(
+            for: visiblePrompts,
+            availableColumns: promptGridColumnCount,
+            previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+            mode: settingsStore.promptSelectionShortcutMode
+        )
+        guard let promptID = PromptOverlayState.promptIDForShortcut(key, assignments: assignments) else {
+            return false
+        }
+
+        selectPrompt(withID: promptID)
+        return true
     }
 
     private func chipBackgroundStyle(isSelected: Bool) -> AnyShapeStyle {
@@ -294,6 +320,7 @@ struct PromptOverlayView: View {
     }
 
     private func moveSelection(by offset: Int) {
+        isSearchFocused = false
         selectedPromptID = PromptOverlayState.selectedPromptIDMoving(
             currentID: selectedPromptID,
             visiblePrompts: visiblePrompts,
@@ -303,6 +330,7 @@ struct PromptOverlayView: View {
     }
 
     private func moveSelectionVertically(direction: Int) {
+        isSearchFocused = false
         selectedPromptID = PromptOverlayState.selectedPromptIDMovingVertically(
             currentID: selectedPromptID,
             visiblePrompts: visiblePrompts,
@@ -344,6 +372,14 @@ struct PromptOverlayView: View {
         }
 
         apply(outcome)
+    }
+
+    private func selectPrompt(withID promptID: Prompt.ID) {
+        guard let index = visiblePrompts.firstIndex(where: { $0.id == promptID }) else {
+            return
+        }
+
+        selectPrompt(at: index)
     }
 
     private func apply(_ outcome: PromptOverlaySelectionOutcome) {

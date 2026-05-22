@@ -20,6 +20,24 @@ enum TriggerMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum PromptSelectionShortcutMode: String, CaseIterable, Identifiable {
+    case spatialLetters
+    case numbers
+
+    var id: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .spatialLetters:
+            "Spatial letters"
+        case .numbers:
+            "Numbers 1-9"
+        }
+    }
+}
+
 protocol LoginItemManaging {
     var launchAtLoginStatus: LaunchAtLoginStatus { get }
 
@@ -71,6 +89,7 @@ final class SettingsStore: ObservableObject {
         static let overlayFixedWidthPixels = "settings.overlayFixedWidthPixels"
         static let overlayFixedHeightPixels = "settings.overlayFixedHeightPixels"
         static let promptPreviewCharacterLimit = "settings.promptPreviewCharacterLimit"
+        static let promptSelectionShortcutMode = "settings.promptSelectionShortcutMode"
     }
 
     nonisolated static let defaultDoubleControlThresholdMilliseconds = 350
@@ -105,6 +124,11 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var overlayFixedWidthPixels: Int
     @Published private(set) var overlayFixedHeightPixels: Int
     @Published private(set) var promptPreviewCharacterLimit: Int
+    @Published var promptSelectionShortcutMode: PromptSelectionShortcutMode {
+        didSet {
+            defaults.set(promptSelectionShortcutMode.rawValue, forKey: Keys.promptSelectionShortcutMode)
+        }
+    }
 
     @Published private(set) var launchAtLoginStatus: LaunchAtLoginStatus
     @Published private(set) var launchAtLoginErrorMessage: String?
@@ -167,6 +191,12 @@ final class SettingsStore: ObservableObject {
                 defaultValue: Self.defaultPromptPreviewCharacterLimit
             )
         )
+        if let rawShortcutMode = defaults.string(forKey: Keys.promptSelectionShortcutMode),
+           let shortcutMode = PromptSelectionShortcutMode(rawValue: rawShortcutMode) {
+            self.promptSelectionShortcutMode = shortcutMode
+        } else {
+            self.promptSelectionShortcutMode = .spatialLetters
+        }
 
         self.launchAtLoginStatus = loginItemManager.launchAtLoginStatus
         self.launchAtLoginErrorMessage = nil

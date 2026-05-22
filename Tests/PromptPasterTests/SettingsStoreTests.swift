@@ -17,6 +17,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.overlayFixedWidthPixels, 1100)
         XCTAssertEqual(store.overlayFixedHeightPixels, 720)
         XCTAssertEqual(store.promptPreviewCharacterLimit, 260)
+        XCTAssertEqual(store.promptSelectionShortcutMode, .spatialLetters)
         XCTAssertEqual(store.launchAtLoginStatus, .disabled)
     }
 
@@ -31,6 +32,7 @@ final class SettingsStoreTests: XCTestCase {
         store.setOverlayFixedWidthPixels(1320)
         store.setOverlayFixedHeightPixels(840)
         store.setPromptPreviewCharacterLimit(180)
+        store.promptSelectionShortcutMode = .numbers
 
         let reloadedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
         XCTAssertEqual(reloadedStore.triggerMode, .fallbackHotkeyOnly)
@@ -40,6 +42,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.overlayFixedWidthPixels, 1320)
         XCTAssertEqual(reloadedStore.overlayFixedHeightPixels, 840)
         XCTAssertEqual(reloadedStore.promptPreviewCharacterLimit, 180)
+        XCTAssertEqual(reloadedStore.promptSelectionShortcutMode, .numbers)
     }
 
     func testClampsPersistedThresholdIntoSupportedRange() {

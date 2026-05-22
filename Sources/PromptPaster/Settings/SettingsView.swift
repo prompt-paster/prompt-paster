@@ -159,6 +159,12 @@ struct SettingsView: View {
                     in: SettingsStore.minimumPromptPreviewCharacterLimit...SettingsStore.maximumPromptPreviewCharacterLimit,
                     step: 20
                 )
+
+                Picker("Selection shortcuts", selection: $settingsStore.promptSelectionShortcutMode) {
+                    ForEach(PromptSelectionShortcutMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
             }
 
             Section("Prompt Library") {

@@ -246,6 +246,51 @@ final class PromptOverlayStateTests: XCTestCase {
         )
     }
 
+    func testSpatialLetterShortcutAssignmentFollowsCardLayout() {
+        let gridPrompts = [
+            Prompt(id: "one", title: "One", category: nil, body: "One"),
+            Prompt(id: "two", title: "Two", category: nil, body: "Two"),
+            Prompt(id: "three", title: "Three", category: nil, body: "Three"),
+            Prompt(id: "four", title: "Four", category: nil, body: "Four"),
+            Prompt(id: "five", title: "Five", category: nil, body: "Five"),
+            Prompt(id: "six", title: "Six", category: nil, body: "Six")
+        ]
+
+        let assignments = PromptOverlayState.shortcutAssignments(
+            for: gridPrompts,
+            availableColumns: 3,
+            previewCharacterLimit: 80,
+            mode: .spatialLetters
+        )
+
+        XCTAssertEqual(assignments, [
+            PromptOverlayShortcutAssignment(promptID: "one", key: "r"),
+            PromptOverlayShortcutAssignment(promptID: "two", key: "y"),
+            PromptOverlayShortcutAssignment(promptID: "three", key: "i"),
+            PromptOverlayShortcutAssignment(promptID: "four", key: "f"),
+            PromptOverlayShortcutAssignment(promptID: "five", key: "h"),
+            PromptOverlayShortcutAssignment(promptID: "six", key: "k")
+        ])
+        XCTAssertEqual(PromptOverlayState.promptIDForShortcut("Y", assignments: assignments), "two")
+    }
+
+    func testNumericShortcutAssignmentPreservesOneThroughNineMode() {
+        let tenPrompts = (1...10).map { index in
+            Prompt(id: "prompt-\(index)", title: "Prompt \(index)", category: nil, body: "Body")
+        }
+
+        let assignments = PromptOverlayState.shortcutAssignments(
+            for: tenPrompts,
+            availableColumns: 4,
+            previewCharacterLimit: 80,
+            mode: .numbers
+        )
+
+        XCTAssertEqual(assignments.map(\.key), ["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+        XCTAssertEqual(PromptOverlayState.promptIDForShortcut("9", assignments: assignments), "prompt-9")
+        XCTAssertNil(PromptOverlayState.promptIDForShortcut("0", assignments: assignments))
+    }
+
     func testVerticalSelectionMovesByVisualGridRows() {
         let gridPrompts = [
             Prompt(id: "one", title: "One", category: nil, body: "One"),

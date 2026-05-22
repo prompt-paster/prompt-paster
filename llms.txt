@@ -87,7 +87,8 @@ Default user library path:
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
 - Fallback global hotkey: `Control + Option + Space` through `HotkeyController`.
 - Trigger mode, double-Control timing, launch-at-login state, overlay display
-  sizing, and prompt preview character limits are managed by `SettingsStore`.
+  sizing, prompt preview character limits, and prompt selection shortcut mode
+  are managed by `SettingsStore`.
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse prompts as adaptive rectangular cards, search,
   filter, navigate, copy selected prompts, close after successful copy, and keep
@@ -95,6 +96,9 @@ Default user library path:
 - Prompt cards use width-based column counts plus deterministic span/height
   helpers so dense prompts can take more room without changing result order or
   shortcut assignment.
+- Prompt selection shortcuts default to spatial center-keyboard letters assigned
+  from the visible card layout. The Settings window can switch badges and key
+  handling back to numeric `1`-`9` mode.
 
 ## Configuration and Packaging
 

@@ -18,6 +18,15 @@ struct PromptOverlayCardLayoutItem: Equatable {
     }
 }
 
+struct PromptOverlayShortcutAssignment: Equatable {
+    let promptID: Prompt.ID
+    let key: String
+
+    var badge: String {
+        key.uppercased()
+    }
+}
+
 struct PromptOverlayState {
     static let promptCardMinimumWidth: CGFloat = 240
     static let promptCardSpacing: CGFloat = 10
@@ -244,6 +253,104 @@ struct PromptOverlayState {
             }
             return item
         }
+    }
+
+    static func shortcutAssignments(
+        for prompts: [Prompt],
+        availableColumns: Int,
+        previewCharacterLimit: Int,
+        mode: PromptSelectionShortcutMode
+    ) -> [PromptOverlayShortcutAssignment] {
+        switch mode {
+        case .numbers:
+            return prompts.prefix(9).enumerated().map { index, prompt in
+                PromptOverlayShortcutAssignment(promptID: prompt.id, key: "\(index + 1)")
+            }
+        case .spatialLetters:
+            return spatialLetterShortcutAssignments(
+                for: prompts,
+                availableColumns: availableColumns,
+                previewCharacterLimit: previewCharacterLimit
+            )
+        }
+    }
+
+    static func promptIDForShortcut(
+        _ key: String,
+        assignments: [PromptOverlayShortcutAssignment]
+    ) -> Prompt.ID? {
+        let normalizedKey = key.lowercased()
+        return assignments.first { $0.key == normalizedKey }?.promptID
+    }
+
+    private static func spatialLetterShortcutAssignments(
+        for prompts: [Prompt],
+        availableColumns: Int,
+        previewCharacterLimit: Int
+    ) -> [PromptOverlayShortcutAssignment] {
+        let layout = promptCardLayout(
+            for: prompts,
+            availableColumns: availableColumns,
+            previewCharacterLimit: previewCharacterLimit
+        )
+        guard !layout.isEmpty else {
+            return []
+        }
+
+        let maxRow = layout.map(\.row).max() ?? 0
+        var usedKeys = Set<String>()
+
+        return layout.compactMap { item in
+            let candidates = spatialLetterCandidates(
+                for: item,
+                maxRow: maxRow,
+                availableColumns: max(1, availableColumns)
+            )
+            guard let key = candidates.first(where: { !usedKeys.contains($0) }) else {
+                return nil
+            }
+            usedKeys.insert(key)
+            return PromptOverlayShortcutAssignment(promptID: item.promptID, key: key)
+        }
+    }
+
+    private static func spatialLetterCandidates(
+        for item: PromptOverlayCardLayoutItem,
+        maxRow: Int,
+        availableColumns: Int
+    ) -> [String] {
+        let keyRow = spatialKeyboardRow(for: item.row, maxRow: maxRow)
+        let denominator = max(1, availableColumns - 1)
+        let normalizedColumn = (item.centerColumn - 0.5) / Double(denominator)
+        let clampedColumn = min(1, max(0, normalizedColumn))
+        let targetIndex = clampedColumn * Double(max(0, keyRow.count - 1))
+
+        return keyRow.enumerated()
+            .sorted { lhs, rhs in
+                let lhsDistance = abs(Double(lhs.offset) - targetIndex)
+                let rhsDistance = abs(Double(rhs.offset) - targetIndex)
+                if lhsDistance == rhsDistance {
+                    return lhs.offset < rhs.offset
+                }
+                return lhsDistance < rhsDistance
+            }
+            .map(\.element)
+    }
+
+    private static func spatialKeyboardRow(for row: Int, maxRow: Int) -> [String] {
+        if maxRow == 0 {
+            return ["f", "g", "h", "j", "k"]
+        }
+
+        if row == 0 {
+            return ["r", "t", "y", "u", "i"]
+        }
+
+        if row == maxRow, maxRow >= 2 {
+            return ["v", "b", "n", "m"]
+        }
+
+        return ["f", "g", "h", "j", "k"]
     }
 
     static func promptCardMinimumHeight(
