@@ -65,7 +65,9 @@ final class PackagingMetadataTests: XCTestCase {
         let workflow = try String(contentsOf: workflowURL, encoding: .utf8)
 
         XCTAssertTrue(workflow.contains("workflow_dispatch"))
-        XCTAssertTrue(workflow.contains("runs-on: macos-15"))
+        XCTAssertTrue(workflow.contains("runs-on: macos-14"))
+        XCTAssertTrue(workflow.contains("DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer"))
+        XCTAssertTrue(workflow.contains("swift --version"))
         XCTAssertTrue(workflow.contains("push:"))
         XCTAssertTrue(workflow.contains("tags:"))
         XCTAssertTrue(workflow.contains("scripts/build-dmg.sh"))

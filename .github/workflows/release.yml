@@ -31,8 +31,9 @@ concurrency:
 jobs:
   release:
     name: Build DMG and publish release
-    runs-on: macos-15
+    runs-on: macos-14
     env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
       TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
       IS_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
       REQUIRE_NOTARIZATION: ${{ github.event_name == 'workflow_dispatch' && inputs.notarize || 'false' }}
@@ -100,6 +101,8 @@ jobs:
       - name: Validate Swift package
         run: |
           set -euo pipefail
+          xcodebuild -version
+          swift --version
           swift build
           swift test
           plutil -lint Packaging/Info.plist
