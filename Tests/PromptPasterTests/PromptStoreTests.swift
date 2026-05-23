@@ -3,14 +3,14 @@ import XCTest
 
 @MainActor
 final class PromptStoreTests: XCTestCase {
-    private var temporaryURLs: [URL] = []
+    nonisolated(unsafe) private var temporaryURLs: [URL] = []
 
-    override func tearDown() async throws {
+    override func tearDownWithError() throws {
         for url in temporaryURLs {
             try? FileManager.default.removeItem(at: url)
         }
         temporaryURLs.removeAll()
-        try await super.tearDown()
+        try super.tearDownWithError()
     }
 
     func testFirstRunCopiesSeedLibrary() throws {
