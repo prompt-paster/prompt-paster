@@ -514,6 +514,30 @@ Validation:
 - Preview text length changes without breaking row/card layout.
 - Invalid or old preference values clamp to safe defaults.
 
+### `PREFS-3`: Add font and global trigger shortcut preferences
+
+Goal: make the overlay reading size and both global trigger shortcuts adjustable
+from Settings without requiring config-file edits.
+
+Tasks:
+
+- Add persisted overlay font-size presets.
+- Apply the selected font-size preset to the overlay.
+- Add persisted fallback hotkey presets.
+- Add persisted double-tap modifier presets.
+- Restart global hotkey monitoring when either trigger shortcut changes.
+- Keep bounded presets for this slice rather than a raw key recorder.
+
+Validation:
+
+- Font-size setting persists across relaunch.
+- Fallback hotkey preset persists and is passed to the Carbon hotkey
+  registrar.
+- Double-tap modifier persists and is passed to the event-tap monitor.
+- Changing either global trigger setting restarts hotkey registration.
+- Existing default `Control + Option + Space` and Double Control behavior
+  remains the default for existing users.
+
 ### `LAYOUT-1`: Replace full-width rows with smart prompt cards
 
 Goal: improve scanning by using variable-sized rectangular cards rather than

@@ -46,9 +46,20 @@ struct SettingsView: View {
                     }
                 }
 
-                LabeledContent("Fallback hotkey", value: HotkeyDisplay.fallbackShortcut)
+                Picker("Fallback hotkey", selection: $settingsStore.fallbackHotkeyPreset) {
+                    ForEach(FallbackHotkeyPreset.allCases) { preset in
+                        Text(preset.displayName).tag(preset)
+                    }
+                }
+
+                Picker("Double-tap modifier", selection: $settingsStore.doubleTapModifier) {
+                    ForEach(DoubleTapModifier.allCases) { modifier in
+                        Text(modifier.doubleTapDisplayName).tag(modifier)
+                    }
+                }
+
                 LabeledContent(
-                    HotkeyDisplay.doubleControlShortcut,
+                    settingsStore.doubleTapDisplayName,
                     value: doubleControlStatus.displayValue
                 )
                 Stepper(
@@ -92,6 +103,12 @@ struct SettingsView: View {
                 }
             }
             .onChange(of: settingsStore.triggerMode) { _, _ in
+                triggerModeChanged()
+            }
+            .onChange(of: settingsStore.fallbackHotkeyPreset) { _, _ in
+                triggerModeChanged()
+            }
+            .onChange(of: settingsStore.doubleTapModifier) { _, _ in
                 triggerModeChanged()
             }
             .onChange(of: settingsStore.doubleControlThresholdMilliseconds) { _, _ in
@@ -165,6 +182,12 @@ struct SettingsView: View {
                     in: SettingsStore.minimumPromptPreviewCharacterLimit...SettingsStore.maximumPromptPreviewCharacterLimit,
                     step: 20
                 )
+
+                Picker("Overlay font size", selection: $settingsStore.overlayFontSize) {
+                    ForEach(OverlayFontSize.allCases) { fontSize in
+                        Text(fontSize.displayName).tag(fontSize)
+                    }
+                }
 
                 Picker("Selection shortcuts", selection: $settingsStore.promptSelectionShortcutMode) {
                     ForEach(PromptSelectionShortcutMode.allCases) { mode in

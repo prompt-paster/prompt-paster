@@ -105,10 +105,14 @@ Default user library path:
 ## Search, Hotkey, and Overlay Behavior
 
 - Search/category filtering: `Sources/PromptPaster/Services/PromptSearch.swift`
-- Fallback global hotkey: `Control + Option + Space` through `HotkeyController`.
-- Trigger mode, double-Control timing, launch-at-login state, overlay display
-  sizing, prompt preview character limits, and prompt selection shortcut mode
-  are managed by `SettingsStore`.
+- Fallback global hotkey: configurable preset through `HotkeyController`;
+  default is `Control + Option + Space`.
+- Double-tap trigger: configurable modifier through `HotkeyController`;
+  default is Double Control.
+- Trigger mode, fallback hotkey preset, double-tap modifier, double-tap timing,
+  launch-at-login state, overlay display sizing, overlay font size, prompt
+  preview character limits, and prompt selection shortcut mode are managed by
+  `SettingsStore`.
 - Prompt ordering mode and per-category ordering overrides are managed by
   `SettingsStore`. Local usage stats are managed by `PromptUsageStore`,
   persisted in user defaults by prompt ID, pruned against the loaded library,
