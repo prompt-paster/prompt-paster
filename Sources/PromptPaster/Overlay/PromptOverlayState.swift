@@ -87,7 +87,7 @@ struct PromptOverlayState {
 
             switch orderingMode {
             case .libraryOrder:
-                return false
+                break
             case .mostUsed:
                 if lhsStats.copyCount != rhsStats.copyCount {
                     return lhsStats.copyCount > rhsStats.copyCount

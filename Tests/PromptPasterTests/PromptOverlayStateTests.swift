@@ -144,6 +144,30 @@ final class PromptOverlayStateTests: XCTestCase {
         )
     }
 
+    func testLibraryOrderUsesLibraryOrderAsSearchTieBreaker() {
+        let searchPrompts = [
+            Prompt(id: "first-body", title: "Alpha", category: nil, body: "common body match"),
+            Prompt(id: "second-body", title: "Beta", category: nil, body: "common body match"),
+            Prompt(id: "third-body", title: "Gamma", category: nil, body: "common body match")
+        ]
+
+        XCTAssertEqual(
+            PromptOverlayState.visiblePrompts(
+                prompts: searchPrompts,
+                query: "common",
+                selectedCategoryID: PromptCategoryFilter.all.id,
+                orderingMode: .libraryOrder,
+                usageStats: [
+                    "third-body": PromptUsageStats(
+                        copyCount: 10,
+                        lastCopiedAt: Date(timeIntervalSince1970: 300)
+                    )
+                ]
+            ).map(\.id),
+            ["first-body", "second-body", "third-body"]
+        )
+    }
+
     func testVisiblePromptsSortByMostUsedWithinSearchAndCategoryFilter() {
         let docsCategoryID = PromptSearch.categories(for: prompts).first { $0.title == "Docs" }?.id ?? ""
 
