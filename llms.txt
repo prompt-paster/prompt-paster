@@ -155,7 +155,8 @@ Default user library path:
   secrets, optionally notarize, upload the DMG artifact, and create/update the
   GitHub Release with the DMG attached. The workflow uploads both a versioned
   DMG and stable `PromptPaster.dmg` alias for direct website downloads, then
-  downloads and validates the published stable asset.
+  downloads and validates the published stable asset. Manually dispatched
+  release reruns force-update the requested tag to the validated commit.
 - GitHub Pages minisite: `docs/index.html`, published from the `docs/` folder
   on `main` at `https://prompt-paster.github.io/prompt-paster/`.
 - Build output is ignored under `.build/` and `dist/`.
