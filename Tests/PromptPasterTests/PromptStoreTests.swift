@@ -79,6 +79,87 @@ final class PromptStoreTests: XCTestCase {
         ])
     }
 
+    func testSavePersistsValidLibraryAndUpdatesPublishedState() throws {
+        let rootURL = makeTemporaryDirectory()
+        let seedURL = rootURL.appendingPathComponent("SeedPrompts.json")
+        let appSupportURL = rootURL.appendingPathComponent("Application Support", isDirectory: true)
+        try writeLibrary(.init(prompts: [
+            Prompt(id: "seed", title: "Seed", body: "Seed body")
+        ]), to: seedURL)
+
+        let store = PromptStore(applicationSupportURL: appSupportURL, seedURL: seedURL)
+        XCTAssertTrue(store.load().didSucceed)
+
+        let updatedLibrary = PromptLibrary(prompts: [
+            Prompt(id: "seed", title: "Updated", category: "General", body: "Updated body", tags: ["edited"])
+        ])
+        let validation = try store.save(updatedLibrary)
+
+        XCTAssertEqual(validation.warnings, [])
+        XCTAssertEqual(store.library, updatedLibrary)
+        XCTAssertNil(store.lastErrorMessage)
+
+        let reloaded = try PromptLibraryCoding.makeDecoder().decode(
+            PromptLibrary.self,
+            from: Data(contentsOf: store.libraryURL)
+        )
+        XCTAssertEqual(reloaded, updatedLibrary)
+    }
+
+    func testSaveRejectsInvalidLibraryAndLeavesFileUnchanged() throws {
+        let rootURL = makeTemporaryDirectory()
+        let seedURL = rootURL.appendingPathComponent("SeedPrompts.json")
+        let appSupportURL = rootURL.appendingPathComponent("Application Support", isDirectory: true)
+        try writeLibrary(.init(prompts: [
+            Prompt(id: "seed", title: "Seed", body: "Seed body")
+        ]), to: seedURL)
+
+        let store = PromptStore(applicationSupportURL: appSupportURL, seedURL: seedURL)
+        XCTAssertTrue(store.load().didSucceed)
+
+        XCTAssertThrowsError(try store.save(PromptLibrary(prompts: [
+            Prompt(id: "seed", title: "", body: "Body")
+        ])))
+
+        let reloaded = try PromptLibraryCoding.makeDecoder().decode(
+            PromptLibrary.self,
+            from: Data(contentsOf: store.libraryURL)
+        )
+        XCTAssertEqual(reloaded.prompts.map(\.title), ["Seed"])
+        XCTAssertEqual(store.library?.prompts.map(\.title), ["Seed"])
+    }
+
+    func testSaveRejectsStaleInMemoryLibraryWhenFileChangedOnDisk() throws {
+        let rootURL = makeTemporaryDirectory()
+        let seedURL = rootURL.appendingPathComponent("SeedPrompts.json")
+        let appSupportURL = rootURL.appendingPathComponent("Application Support", isDirectory: true)
+        try writeLibrary(.init(prompts: [
+            Prompt(id: "seed", title: "Seed", body: "Seed body")
+        ]), to: seedURL)
+
+        let store = PromptStore(applicationSupportURL: appSupportURL, seedURL: seedURL)
+        XCTAssertTrue(store.load().didSucceed)
+
+        try writeLibrary(.init(prompts: [
+            Prompt(id: "seed", title: "External edit", body: "External body")
+        ]), to: store.libraryURL)
+
+        XCTAssertThrowsError(try store.save(PromptLibrary(prompts: [
+            Prompt(id: "seed", title: "Manager edit", body: "Manager body")
+        ]))) { error in
+            guard case PromptStoreError.libraryChangedOnDisk = error else {
+                return XCTFail("Expected stale file rejection, got \(error)")
+            }
+        }
+
+        let reloaded = try PromptLibraryCoding.makeDecoder().decode(
+            PromptLibrary.self,
+            from: Data(contentsOf: store.libraryURL)
+        )
+        XCTAssertEqual(reloaded.prompts.map(\.title), ["External edit"])
+        XCTAssertEqual(store.library?.prompts.map(\.title), ["Seed"])
+    }
+
     private func makeTemporaryDirectory() -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("PromptPasterTests-\(UUID().uuidString)", isDirectory: true)

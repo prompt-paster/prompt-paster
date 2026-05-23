@@ -21,6 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         promptStore: promptStore,
         settingsStore: settingsStore,
         promptUsageStore: promptUsageStore,
+        openLibraryManager: { [weak self] in
+            self?.openLibraryManager()
+        },
         fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
         doubleControlStatus: doubleControlStatus,
         triggerModeChanged: { [weak self] in
@@ -36,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
             self?.requestAccessibilityPermission()
         }
     )
+    private lazy var libraryManagerController = PromptLibraryManagerWindowController(promptStore: promptStore)
     private var hotkeyController: HotkeyController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -79,6 +83,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         )
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
+            withTitle: "Edit Prompt Library...",
+            action: #selector(openLibraryManager),
+            keyEquivalent: "l"
+        )
+        menu.addItem(
             withTitle: "Open Prompt Library",
             action: #selector(openPromptLibrary),
             keyEquivalent: "o"
@@ -115,6 +124,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         settingsController.doubleControlStatus = doubleControlStatus
         settingsController.refreshLaunchAtLoginStatus()
         settingsController.show()
+    }
+
+    @objc private func openLibraryManager() {
+        libraryManagerController.show()
     }
 
     @objc private func openPromptLibrary() {

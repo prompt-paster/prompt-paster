@@ -7,6 +7,7 @@ final class SettingsWindowController {
     private let promptStore: PromptStore
     private let settingsStore: SettingsStore
     private let promptUsageStore: PromptUsageStore
+    private let openLibraryManager: () -> Void
     private let triggerModeChanged: () -> Void
     private let doubleControlTimingChanged: () -> Void
     private let openAccessibilitySettings: () -> Void
@@ -26,6 +27,7 @@ final class SettingsWindowController {
         promptStore: PromptStore,
         settingsStore: SettingsStore,
         promptUsageStore: PromptUsageStore,
+        openLibraryManager: @escaping () -> Void = {},
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
         triggerModeChanged: @escaping () -> Void = {},
@@ -36,6 +38,7 @@ final class SettingsWindowController {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
         self.promptUsageStore = promptUsageStore
+        self.openLibraryManager = openLibraryManager
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
         self.triggerModeChanged = triggerModeChanged
@@ -79,6 +82,7 @@ final class SettingsWindowController {
             promptStore: promptStore,
             settingsStore: settingsStore,
             promptUsageStore: promptUsageStore,
+            openLibraryManager: openLibraryManager,
             fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
             doubleControlStatus: doubleControlStatus,
             triggerModeChanged: triggerModeChanged,
