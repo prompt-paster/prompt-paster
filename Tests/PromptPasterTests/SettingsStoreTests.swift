@@ -23,6 +23,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.overlayFixedHeightPixels, 720)
         XCTAssertEqual(store.promptPreviewCharacterLimit, 260)
         XCTAssertEqual(store.overlayFontSize, .standard)
+        XCTAssertFalse(store.showsPromptTagsOnCards)
         XCTAssertEqual(store.promptSelectionShortcutMode, .spatialLetters)
         XCTAssertEqual(store.promptOrderingMode, .libraryOrder)
         XCTAssertEqual(store.promptOrderingOverridesByCategoryID, [:])
@@ -43,6 +44,7 @@ final class SettingsStoreTests: XCTestCase {
         store.setOverlayFixedHeightPixels(840)
         store.setPromptPreviewCharacterLimit(180)
         store.overlayFontSize = .large
+        store.showsPromptTagsOnCards = true
         store.promptSelectionShortcutMode = .numbers
         store.promptOrderingMode = .mostUsed
 
@@ -58,6 +60,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.overlayFixedHeightPixels, 840)
         XCTAssertEqual(reloadedStore.promptPreviewCharacterLimit, 180)
         XCTAssertEqual(reloadedStore.overlayFontSize, .large)
+        XCTAssertTrue(reloadedStore.showsPromptTagsOnCards)
         XCTAssertEqual(reloadedStore.promptSelectionShortcutMode, .numbers)
         XCTAssertEqual(reloadedStore.promptOrderingMode, .mostUsed)
     }

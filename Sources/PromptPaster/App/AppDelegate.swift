@@ -37,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         },
         requestAccessibilityPermission: { [weak self] in
             self?.requestAccessibilityPermission()
+        },
+        openInputMonitoringSettings: { [weak self] in
+            self?.hotkeyController.openInputMonitoringSettings()
+        },
+        requestInputMonitoringPermission: { [weak self] in
+            self?.requestInputMonitoringPermission()
         }
     )
     private lazy var libraryManagerController = PromptLibraryManagerWindowController(promptStore: promptStore)
@@ -188,6 +194,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
 
     private func requestAccessibilityPermission() {
         let status = hotkeyController.requestAccessibilityPermission()
+        applyHotkeyStatus(status)
+        settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
+        settingsController.doubleControlStatus = doubleControlStatus
+    }
+
+    private func requestInputMonitoringPermission() {
+        let status = hotkeyController.requestInputMonitoringPermission()
         applyHotkeyStatus(status)
         settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         settingsController.doubleControlStatus = doubleControlStatus

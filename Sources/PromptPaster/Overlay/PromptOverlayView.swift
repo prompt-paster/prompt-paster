@@ -260,7 +260,8 @@ struct PromptOverlayView: View {
                                 prompt: prompt,
                                 shortcutBadge: promptShortcutAssignments.first { $0.promptID == prompt.id }?.badge,
                                 isSelected: prompt.id == selectedPromptID,
-                                previewCharacterLimit: settingsStore.promptPreviewCharacterLimit
+                                previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+                                showsPromptTags: settingsStore.showsPromptTagsOnCards
                             )
                             .gridCellColumns(
                                 min(
@@ -459,21 +460,19 @@ private struct PromptCardView: View {
     let shortcutBadge: String?
     let isSelected: Bool
     let previewCharacterLimit: Int
+    let showsPromptTags: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(prompt.title)
-                        .font(.headline)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    categoryBadge
-                }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(prompt.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 8)
 
+                categoryBadge
                 shortcutBadgeView
             }
 
@@ -487,7 +486,7 @@ private struct PromptCardView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            if !prompt.tags.isEmpty {
+            if showsPromptTags, !prompt.tags.isEmpty {
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     ForEach(Array(prompt.tags.prefix(5).enumerated()), id: \.offset) { _, tag in
                         Text(tag)
@@ -524,13 +523,13 @@ private struct PromptCardView: View {
         if let category = prompt.category, !category.isEmpty {
             Text(category)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(categoryColor.text)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .frame(maxWidth: 160, alignment: .leading)
-                .background(.thinMaterial, in: Capsule())
+                .frame(maxWidth: 150, alignment: .trailing)
+                .background(categoryColor.background, in: Capsule())
         }
     }
 
@@ -561,6 +560,39 @@ private struct PromptCardView: View {
         isSelected
             ? AnyShapeStyle(Color.accentColor.opacity(0.65))
             : AnyShapeStyle(Color(nsColor: .separatorColor).opacity(0.35))
+    }
+
+    private var categoryColor: PromptCategoryBadgeColor {
+        PromptCategoryBadgeColor(category: prompt.category ?? "")
+    }
+}
+
+private struct PromptCategoryBadgeColor {
+    let background: Color
+    let text: Color
+
+    init(category: String) {
+        let palette: [(background: Color, text: Color)] = [
+            (Color(red: 0.18, green: 0.34, blue: 0.68), .white),
+            (Color(red: 0.10, green: 0.48, blue: 0.42), .white),
+            (Color(red: 0.58, green: 0.26, blue: 0.16), .white),
+            (Color(red: 0.40, green: 0.28, blue: 0.62), .white),
+            (Color(red: 0.58, green: 0.42, blue: 0.08), Color(red: 0.08, green: 0.07, blue: 0.04)),
+            (Color(red: 0.48, green: 0.18, blue: 0.36), .white),
+            (Color(red: 0.20, green: 0.43, blue: 0.22), .white),
+            (Color(red: 0.44, green: 0.24, blue: 0.11), .white)
+        ]
+        let index = abs(category.stableHash) % palette.count
+        background = palette[index].background.opacity(0.78)
+        text = palette[index].text
+    }
+}
+
+private extension String {
+    var stableHash: Int {
+        unicodeScalars.reduce(5381) { result, scalar in
+            ((result << 5) &+ result) &+ Int(scalar.value)
+        }
     }
 }
 
