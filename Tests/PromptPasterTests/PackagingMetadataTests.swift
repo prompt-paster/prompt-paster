@@ -70,11 +70,26 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(workflow.contains("swift --version"))
         XCTAssertTrue(workflow.contains("push:"))
         XCTAssertTrue(workflow.contains("tags:"))
+        XCTAssertTrue(workflow.contains("STABLE_DMG_PATH"))
+        XCTAssertTrue(workflow.contains("dist/PromptPaster.dmg"))
         XCTAssertTrue(workflow.contains("scripts/build-dmg.sh"))
+        XCTAssertTrue(workflow.contains("cp \"$DMG_PATH\" \"$STABLE_DMG_PATH\""))
         XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$DMG_PATH\" --launch-smoke"))
         XCTAssertTrue(workflow.contains("actions/upload-artifact@v4"))
         XCTAssertTrue(workflow.contains("gh release create"))
         XCTAssertTrue(workflow.contains("gh release upload"))
+    }
+
+    func testGitHubPagesSiteLinksDirectlyToStableDMGDownload() throws {
+        let siteURL = try repositoryRoot()
+            .appendingPathComponent("docs")
+            .appendingPathComponent("index.html")
+        let site = try String(contentsOf: siteURL, encoding: .utf8)
+
+        XCTAssertTrue(site.contains("Prompt Paster"))
+        XCTAssertTrue(site.contains("https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg"))
+        XCTAssertTrue(site.contains("Download for macOS"))
+        XCTAssertTrue(site.contains("Requires macOS 14"))
     }
 
     func testReleaseWorkflowSupportsSigningAndNotarizationSecrets() throws {

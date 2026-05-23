@@ -680,3 +680,30 @@ Validation:
 - Unsigned alpha releases work without Apple secrets.
 - Notarized releases fail before building when required Apple secrets are
   missing.
+
+### `SITE-1`: Move repo and publish GitHub Pages minisite
+
+Goal: give Prompt Paster a small public product page with a direct download
+link that downloads the latest DMG without sending users through the GitHub
+release page.
+
+Tasks:
+
+- Transfer the repository from `shaypal5/prompt-paster` to
+  `prompt-paster/prompt-paster`.
+- Publish a one-page GitHub Pages site from `docs/index.html`.
+- Add a primary download link to:
+  `https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg`.
+- Update the release workflow to upload a stable `PromptPaster.dmg` asset
+  alongside the versioned DMG artifact.
+- Keep source, release notes, install requirements, and signing status visible
+  but secondary to the direct download action.
+
+Validation:
+
+- `swift test`
+- `scripts/build-dmg.sh`
+- `scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg --launch-smoke`
+- GitHub Pages is enabled for `main` / `docs`.
+- `PromptPaster.dmg` is present on the latest release and the website download
+  URL resolves directly to the DMG.

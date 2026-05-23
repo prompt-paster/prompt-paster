@@ -54,11 +54,14 @@ jobs:
           set -euo pipefail
           version="$(plutil -extract CFBundleShortVersionString raw Packaging/Info.plist)"
           dmg_path="dist/PromptPaster-${version}.dmg"
+          stable_dmg_path="dist/PromptPaster.dmg"
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
           echo "DMG_PATH=$dmg_path" >> "$GITHUB_ENV"
+          echo "STABLE_DMG_PATH=$stable_dmg_path" >> "$GITHUB_ENV"
           echo "Release tag: $TAG_NAME"
           echo "App version: $version"
           echo "DMG path: $dmg_path"
+          echo "Stable DMG path: $stable_dmg_path"
 
       - name: Validate signing and notarization configuration
         run: |
@@ -114,6 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           scripts/build-dmg.sh
+          cp "$DMG_PATH" "$STABLE_DMG_PATH"
 
       - name: Validate DMG with launch smoke
         run: |
@@ -124,7 +128,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PromptPaster-${{ env.APP_VERSION }}-dmg
-          path: ${{ env.DMG_PATH }}
+          path: |
+            ${{ env.DMG_PATH }}
+            ${{ env.STABLE_DMG_PATH }}
           if-no-files-found: error
 
       - name: Create or update GitHub Release
@@ -139,7 +145,7 @@ jobs:
           macOS DMG artifact built by GitHub Actions from commit ${GITHUB_SHA}.
 
           Install:
-          1. Download ${DMG_PATH##*/}.
+          1. Download ${STABLE_DMG_PATH##*/}.
           2. Open the DMG.
           3. Drag Prompt Paster.app to Applications.
           4. Launch Prompt Paster from Applications.
@@ -156,13 +162,13 @@ jobs:
           fi
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
+            gh release upload "$TAG_NAME" "$DMG_PATH" "$STABLE_DMG_PATH" --clobber
             gh release edit "$TAG_NAME" \
               --title "Prompt Paster ${TAG_NAME}" \
               --notes-file "$release_notes" \
               "${prerelease_args[@]}"
           else
-            gh release create "$TAG_NAME" "$DMG_PATH" \
+            gh release create "$TAG_NAME" "$DMG_PATH" "$STABLE_DMG_PATH" \
               --target "$GITHUB_SHA" \
               --title "Prompt Paster ${TAG_NAME}" \
               --notes-file "$release_notes" \

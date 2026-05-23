@@ -53,7 +53,9 @@ Tests/PromptPasterTests/
   PromptSearchTests.swift
   PromptStoreTests.swift
 docs/
+  .nojekyll
   design-architecture-spec.md
+  index.html
   implementation-plan.md
   review-recommendations.md
 scripts/
@@ -150,7 +152,10 @@ Default user library path:
 - GitHub release workflow behavior: manual dispatch or `v*` tags build the DMG
   on macOS, optionally import a Developer ID Application certificate from
   secrets, optionally notarize, upload the DMG artifact, and create/update the
-  GitHub Release with the DMG attached.
+  GitHub Release with the DMG attached. The workflow uploads both a versioned
+  DMG and stable `PromptPaster.dmg` alias for direct website downloads.
+- GitHub Pages minisite: `docs/index.html`, published from the `docs/` folder
+  on `main` at `https://prompt-paster.github.io/prompt-paster/`.
 - Build output is ignored under `.build/` and `dist/`.
 
 ## Planning and Agent Context
