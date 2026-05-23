@@ -12,6 +12,8 @@ final class SettingsWindowController {
     private let doubleControlTimingChanged: () -> Void
     private let openAccessibilitySettings: () -> Void
     private let requestAccessibilityPermission: () -> Void
+    private let openInputMonitoringSettings: () -> Void
+    private let requestInputMonitoringPermission: () -> Void
     var fallbackHotkeyStatusMessage: String? {
         didSet {
             refreshContentView()
@@ -33,7 +35,9 @@ final class SettingsWindowController {
         triggerModeChanged: @escaping () -> Void = {},
         doubleControlTimingChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
-        requestAccessibilityPermission: @escaping () -> Void = {}
+        requestAccessibilityPermission: @escaping () -> Void = {},
+        openInputMonitoringSettings: @escaping () -> Void = {},
+        requestInputMonitoringPermission: @escaping () -> Void = {}
     ) {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
@@ -45,6 +49,8 @@ final class SettingsWindowController {
         self.doubleControlTimingChanged = doubleControlTimingChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
+        self.openInputMonitoringSettings = openInputMonitoringSettings
+        self.requestInputMonitoringPermission = requestInputMonitoringPermission
     }
 
     func refreshLaunchAtLoginStatus() {
@@ -88,7 +94,9 @@ final class SettingsWindowController {
             triggerModeChanged: triggerModeChanged,
             doubleControlTimingChanged: doubleControlTimingChanged,
             openAccessibilitySettings: openAccessibilitySettings,
-            requestAccessibilityPermission: requestAccessibilityPermission
+            requestAccessibilityPermission: requestAccessibilityPermission,
+            openInputMonitoringSettings: openInputMonitoringSettings,
+            requestInputMonitoringPermission: requestInputMonitoringPermission
         )
     }
 }

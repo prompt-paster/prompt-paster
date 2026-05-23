@@ -110,11 +110,13 @@ Default user library path:
 - Double-tap trigger: configurable modifier through `HotkeyController`;
   default is Double Control. The production path uses AppKit global
   `NSEvent` modifier monitoring first, with the older `CGEvent` tap retained as
-  setup fallback.
+  setup fallback. Double-modifier monitoring checks both Accessibility and
+  Input Monitoring permission, because macOS treats event listening as a
+  separate TCC grant.
 - Trigger mode, fallback hotkey preset, double-tap modifier, double-tap timing,
   launch-at-login state, overlay display sizing, overlay font size, prompt
-  preview character limits, and prompt selection shortcut mode are managed by
-  `SettingsStore`.
+  preview character limits, optional prompt-card tag display, and prompt
+  selection shortcut mode are managed by `SettingsStore`.
 - Prompt ordering mode and per-category ordering overrides are managed by
   `SettingsStore`. Local usage stats are managed by `PromptUsageStore`,
   persisted in user defaults by prompt ID, pruned against the loaded library,
@@ -122,7 +124,9 @@ Default user library path:
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse prompts as adaptive rectangular cards, search,
   filter, navigate, copy selected prompts, close after successful copy, and keep
-  the overlay open on clipboard failure.
+  the overlay open on clipboard failure. Prompt-card category badges are shown
+  in the title row with deterministic category colors; prompt tags are hidden by
+  default and can be enabled from Settings.
 - Current library editor scope: open from the status menu or Settings, search
   prompts, filter by category and tag, edit title/body/category/tags, validate
   before saving, protect unsaved drafts during navigation/reload, reject stale

@@ -261,6 +261,7 @@ enum DoubleControlTriggerStatus: Equatable {
     case active
     case disabled
     case needsAccessibility
+    case needsInputMonitoring
     case monitorUnavailable(String)
 
     var displayValue: String {
@@ -271,6 +272,8 @@ enum DoubleControlTriggerStatus: Equatable {
             "Disabled"
         case .needsAccessibility:
             "Needs Accessibility"
+        case .needsInputMonitoring:
+            "Needs Input Monitoring"
         case .monitorUnavailable:
             "Unavailable"
         }
@@ -284,6 +287,8 @@ enum DoubleControlTriggerStatus: Equatable {
             "Double Control is disabled. The fallback hotkey remains available."
         case .needsAccessibility:
             "Double Control needs Accessibility permission. Grant permission in System Settings, then recheck permission. The fallback hotkey remains available."
+        case .needsInputMonitoring:
+            "Double Control needs Input Monitoring permission. Grant permission in System Settings, then recheck permission. The fallback hotkey remains available."
         case let .monitorUnavailable(message):
             message
         }
@@ -292,18 +297,30 @@ enum DoubleControlTriggerStatus: Equatable {
     var canRequestAccessibilityPermission: Bool {
         self == .needsAccessibility
     }
+
+    var canRequestInputMonitoringPermission: Bool {
+        self == .needsInputMonitoring
+    }
 }
 
 protocol AccessibilityPermissionChecking {
     var isAccessibilityTrusted: Bool { get }
+    var isInputMonitoringTrusted: Bool { get }
     @discardableResult
     func requestAccessibilityPermission() -> Bool
+    @discardableResult
+    func requestInputMonitoringPermission() -> Bool
     func openAccessibilitySettings()
+    func openInputMonitoringSettings()
 }
 
 struct AccessibilityPermissionChecker: AccessibilityPermissionChecking {
     var isAccessibilityTrusted: Bool {
         AXIsProcessTrusted()
+    }
+
+    var isInputMonitoringTrusted: Bool {
+        CGPreflightListenEventAccess()
     }
 
     @discardableResult
@@ -314,8 +331,20 @@ struct AccessibilityPermissionChecker: AccessibilityPermissionChecking {
         return AXIsProcessTrustedWithOptions(options)
     }
 
+    @discardableResult
+    func requestInputMonitoringPermission() -> Bool {
+        CGRequestListenEventAccess()
+    }
+
     func openAccessibilitySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    func openInputMonitoringSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") else {
             return
         }
         NSWorkspace.shared.open(url)
@@ -418,6 +447,10 @@ final class HotkeyController {
         accessibilityPermissionChecker.openAccessibilitySettings()
     }
 
+    func openInputMonitoringSettings() {
+        accessibilityPermissionChecker.openInputMonitoringSettings()
+    }
+
     func updateDoubleControlConfiguration(_ configuration: DoubleControlTapConfiguration) {
         doubleControlConfiguration = configuration
         doubleControlDetector = DoubleControlTapDetector(configuration: configuration)
@@ -426,7 +459,16 @@ final class HotkeyController {
     @discardableResult
     func requestAccessibilityPermission() -> HotkeyStartupStatus {
         accessibilityPermissionChecker.requestAccessibilityPermission()
+        return recheckPermissionsAndStartMonitoring()
+    }
 
+    @discardableResult
+    func requestInputMonitoringPermission() -> HotkeyStartupStatus {
+        accessibilityPermissionChecker.requestInputMonitoringPermission()
+        return recheckPermissionsAndStartMonitoring()
+    }
+
+    private func recheckPermissionsAndStartMonitoring() -> HotkeyStartupStatus {
         guard registrationState.isRegistered else {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: "Fallback hotkey has not started.",
@@ -468,6 +510,13 @@ final class HotkeyController {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
                 doubleControlStatus: .needsAccessibility
+            )
+        }
+
+        guard accessibilityPermissionChecker.isInputMonitoringTrusted else {
+            return HotkeyStartupStatus(
+                fallbackHotkeyStatusMessage: nil,
+                doubleControlStatus: .needsInputMonitoring
             )
         }
 
@@ -516,6 +565,13 @@ final class HotkeyController {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
                 doubleControlStatus: .needsAccessibility
+            )
+        }
+
+        guard accessibilityPermissionChecker.isInputMonitoringTrusted else {
+            return HotkeyStartupStatus(
+                fallbackHotkeyStatusMessage: nil,
+                doubleControlStatus: .needsInputMonitoring
             )
         }
 

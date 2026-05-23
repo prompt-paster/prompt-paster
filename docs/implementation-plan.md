@@ -206,7 +206,8 @@ Tasks:
 - Add category chips.
 - Add prompt result grid or dense list.
 - Build `PromptCardView`.
-- Show title, category, preview, tags, and shortcut badge.
+- Show title, color-coded category badge, preview, optional tags, and shortcut
+  badge.
 - Add selected state.
 - Add empty search state.
 - Add invalid-library warning state.

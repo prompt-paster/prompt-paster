@@ -217,6 +217,47 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(status.doubleControlStatus, .active)
     }
 
+    func testDoubleControlDoesNotStartWithoutInputMonitoringPermission() throws {
+        let monitor = FakeDoubleControlMonitor()
+        let controller = HotkeyController(
+            handler: FakeHotkeyHandler(),
+            registrar: AnyHotkeyRegistrar(FakeHotkeyRegistrar()),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(
+                isAccessibilityTrusted: true,
+                isInputMonitoringTrusted: false
+            )
+        )
+
+        let status = try controller.start()
+
+        XCTAssertEqual(status.doubleControlStatus, .needsInputMonitoring)
+        XCTAssertEqual(monitor.startCount, 0)
+        XCTAssertTrue(status.doubleControlStatus.message?.contains("Input Monitoring permission") == true)
+    }
+
+    func testRequestInputMonitoringPermissionRechecksAndStartsMonitor() throws {
+        let monitor = FakeDoubleControlMonitor()
+        let permissionChecker = FakeAccessibilityPermissionChecker(
+            isAccessibilityTrusted: true,
+            isInputMonitoringTrusted: false
+        )
+        let controller = HotkeyController(
+            handler: FakeHotkeyHandler(),
+            registrar: AnyHotkeyRegistrar(FakeHotkeyRegistrar()),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: permissionChecker
+        )
+
+        XCTAssertEqual(try controller.start().doubleControlStatus, .needsInputMonitoring)
+        permissionChecker.isInputMonitoringTrusted = true
+        let status = controller.requestInputMonitoringPermission()
+
+        XCTAssertEqual(permissionChecker.inputMonitoringRequestCount, 1)
+        XCTAssertEqual(monitor.startCount, 1)
+        XCTAssertEqual(status.doubleControlStatus, .active)
+    }
+
     func testDoubleControlMonitorTriggersSameHandlerRoute() throws {
         let handler = FakeHotkeyHandler()
         let monitor = FakeDoubleControlMonitor()
@@ -570,10 +611,13 @@ private final class FakeDoubleControlMonitor: DoubleControlMonitoring {
 
 private final class FakeAccessibilityPermissionChecker: AccessibilityPermissionChecking {
     var isAccessibilityTrusted: Bool
+    var isInputMonitoringTrusted: Bool
     var requestCount = 0
+    var inputMonitoringRequestCount = 0
 
-    init(isAccessibilityTrusted: Bool) {
+    init(isAccessibilityTrusted: Bool, isInputMonitoringTrusted: Bool = true) {
         self.isAccessibilityTrusted = isAccessibilityTrusted
+        self.isInputMonitoringTrusted = isInputMonitoringTrusted
     }
 
     func requestAccessibilityPermission() -> Bool {
@@ -581,5 +625,12 @@ private final class FakeAccessibilityPermissionChecker: AccessibilityPermissionC
         return isAccessibilityTrusted
     }
 
+    func requestInputMonitoringPermission() -> Bool {
+        inputMonitoringRequestCount += 1
+        return isInputMonitoringTrusted
+    }
+
     func openAccessibilitySettings() {}
+
+    func openInputMonitoringSettings() {}
 }

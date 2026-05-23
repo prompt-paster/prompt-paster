@@ -140,6 +140,7 @@ final class SettingsStore: ObservableObject {
         static let overlayFontSize = "settings.overlayFontSize"
         static let fallbackHotkeyPreset = "settings.fallbackHotkeyPreset"
         static let doubleTapModifier = "settings.doubleTapModifier"
+        static let showsPromptTagsOnCards = "settings.showsPromptTagsOnCards"
     }
 
     nonisolated static let defaultDoubleControlThresholdMilliseconds = 350
@@ -187,6 +188,11 @@ final class SettingsStore: ObservableObject {
     @Published var overlayFontSize: OverlayFontSize {
         didSet {
             defaults.set(overlayFontSize.rawValue, forKey: Keys.overlayFontSize)
+        }
+    }
+    @Published var showsPromptTagsOnCards: Bool {
+        didSet {
+            defaults.set(showsPromptTagsOnCards, forKey: Keys.showsPromptTagsOnCards)
         }
     }
     @Published var promptSelectionShortcutMode: PromptSelectionShortcutMode {
@@ -280,6 +286,7 @@ final class SettingsStore: ObservableObject {
         } else {
             self.overlayFontSize = .standard
         }
+        self.showsPromptTagsOnCards = defaults.bool(forKey: Keys.showsPromptTagsOnCards)
         if let rawShortcutMode = defaults.string(forKey: Keys.promptSelectionShortcutMode),
            let shortcutMode = PromptSelectionShortcutMode(rawValue: rawShortcutMode) {
             self.promptSelectionShortcutMode = shortcutMode

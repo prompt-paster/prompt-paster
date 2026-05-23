@@ -12,6 +12,8 @@ struct SettingsView: View {
     let doubleControlTimingChanged: () -> Void
     let openAccessibilitySettings: () -> Void
     let requestAccessibilityPermission: () -> Void
+    let openInputMonitoringSettings: () -> Void
+    let requestInputMonitoringPermission: () -> Void
 
     init(
         promptStore: PromptStore,
@@ -23,7 +25,9 @@ struct SettingsView: View {
         triggerModeChanged: @escaping () -> Void = {},
         doubleControlTimingChanged: @escaping () -> Void = {},
         openAccessibilitySettings: @escaping () -> Void = {},
-        requestAccessibilityPermission: @escaping () -> Void = {}
+        requestAccessibilityPermission: @escaping () -> Void = {},
+        openInputMonitoringSettings: @escaping () -> Void = {},
+        requestInputMonitoringPermission: @escaping () -> Void = {}
     ) {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
@@ -35,6 +39,8 @@ struct SettingsView: View {
         self.doubleControlTimingChanged = doubleControlTimingChanged
         self.openAccessibilitySettings = openAccessibilitySettings
         self.requestAccessibilityPermission = requestAccessibilityPermission
+        self.openInputMonitoringSettings = openInputMonitoringSettings
+        self.requestInputMonitoringPermission = requestInputMonitoringPermission
     }
 
     var body: some View {
@@ -96,6 +102,18 @@ struct SettingsView: View {
 
                                 Button("Open Accessibility Settings") {
                                     openAccessibilitySettings()
+                                }
+                            }
+                        }
+
+                        if doubleControlStatus.canRequestInputMonitoringPermission {
+                            HStack {
+                                Button("Request Input Monitoring Permission") {
+                                    requestInputMonitoringPermission()
+                                }
+
+                                Button("Open Input Monitoring Settings") {
+                                    openInputMonitoringSettings()
                                 }
                             }
                         }
@@ -188,6 +206,8 @@ struct SettingsView: View {
                         Text(fontSize.displayName).tag(fontSize)
                     }
                 }
+
+                Toggle("Show prompt tags on cards", isOn: $settingsStore.showsPromptTagsOnCards)
 
                 Picker("Selection shortcuts", selection: $settingsStore.promptSelectionShortcutMode) {
                     ForEach(PromptSelectionShortcutMode.allCases) { mode in
