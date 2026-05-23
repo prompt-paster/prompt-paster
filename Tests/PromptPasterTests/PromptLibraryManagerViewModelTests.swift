@@ -4,16 +4,16 @@ import XCTest
 
 @MainActor
 final class PromptLibraryManagerViewModelTests: XCTestCase {
-    private var temporaryURLs: [URL] = []
-    private var cancellables: Set<AnyCancellable> = []
+    nonisolated(unsafe) private var temporaryURLs: [URL] = []
+    nonisolated(unsafe) private var cancellables: Set<AnyCancellable> = []
 
-    override func tearDown() async throws {
+    override func tearDownWithError() throws {
         for url in temporaryURLs {
             try? FileManager.default.removeItem(at: url)
         }
         temporaryURLs.removeAll()
         cancellables.removeAll()
-        try await super.tearDown()
+        try super.tearDownWithError()
     }
 
     func testDirtyDraftBlocksSelectionChangesUntilDiscarded() throws {
