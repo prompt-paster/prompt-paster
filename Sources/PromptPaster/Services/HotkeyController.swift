@@ -513,13 +513,6 @@ final class HotkeyController {
             )
         }
 
-        guard accessibilityPermissionChecker.isInputMonitoringTrusted else {
-            return HotkeyStartupStatus(
-                fallbackHotkeyStatusMessage: nil,
-                doubleControlStatus: .needsInputMonitoring
-            )
-        }
-
         do {
             try doubleControlMonitor.start(modifier: doubleTapModifier) { [weak self] input in
                 guard var detector = self?.doubleControlDetector else {
@@ -538,6 +531,12 @@ final class HotkeyController {
                 doubleControlStatus: .active
             )
         } catch {
+            if !accessibilityPermissionChecker.isInputMonitoringTrusted {
+                return HotkeyStartupStatus(
+                    fallbackHotkeyStatusMessage: nil,
+                    doubleControlStatus: .needsInputMonitoring
+                )
+            }
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
                 doubleControlStatus: .monitorUnavailable("Double Control unavailable. \(error.localizedDescription)")
@@ -565,13 +564,6 @@ final class HotkeyController {
             return HotkeyStartupStatus(
                 fallbackHotkeyStatusMessage: nil,
                 doubleControlStatus: .needsAccessibility
-            )
-        }
-
-        guard accessibilityPermissionChecker.isInputMonitoringTrusted else {
-            return HotkeyStartupStatus(
-                fallbackHotkeyStatusMessage: nil,
-                doubleControlStatus: .needsInputMonitoring
             )
         }
 
@@ -685,8 +677,8 @@ final class ResilientDoubleControlMonitor: DoubleControlMonitoring {
     }
 
     init(monitors: [DoubleControlMonitoring] = [
-        NSEventDoubleControlMonitor(),
-        CGEventDoubleControlMonitor()
+        CGEventDoubleControlMonitor(),
+        NSEventDoubleControlMonitor()
     ]) {
         self.monitors = monitors
     }

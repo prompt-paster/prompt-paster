@@ -469,6 +469,7 @@ private struct PromptCardView: View {
                     .font(.headline)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
 
                 Spacer(minLength: 8)
 
@@ -528,7 +529,7 @@ private struct PromptCardView: View {
                 .truncationMode(.tail)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .frame(maxWidth: 150, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
                 .background(categoryColor.background, in: Capsule())
         }
     }

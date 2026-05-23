@@ -226,7 +226,8 @@ Design defaults:
 - Avoid large hero-style typography.
 - Avoid decorative gradients or illustration.
 - Use native vibrancy or a restrained solid surface.
-- Keep cards small enough to scan quickly.
+- Keep cards small enough to scan quickly, with compact minimum heights so
+  unused card space does not crowd out prompt previews.
 
 ## Milestone 6: Clipboard Selection Loop
 
@@ -557,7 +558,7 @@ Tasks:
 Validation:
 
 - Cards fit without overlapping at small and large overlay sizes.
-- Long titles, tags, and previews remain readable.
+- Long titles, optional tags, and previews remain readable.
 - Search filtering does not produce jarring reshuffles beyond the expected
   result-set change.
 - Pointer and keyboard selection still copy and close.

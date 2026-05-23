@@ -217,7 +217,7 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(status.doubleControlStatus, .active)
     }
 
-    func testDoubleControlDoesNotStartWithoutInputMonitoringPermission() throws {
+    func testDoubleControlStartsWithoutInputMonitoringWhenEventTapStarts() throws {
         let monitor = FakeDoubleControlMonitor()
         let controller = HotkeyController(
             handler: FakeHotkeyHandler(),
@@ -231,12 +231,30 @@ final class HotkeyControllerTests: XCTestCase {
 
         let status = try controller.start()
 
+        XCTAssertEqual(status.doubleControlStatus, .active)
+        XCTAssertEqual(monitor.startCount, 1)
+    }
+
+    func testDoubleControlReportsInputMonitoringWhenMonitorFailsAndPermissionIsMissing() throws {
+        let monitor = FakeDoubleControlMonitor(startError: HotkeyControllerError.doubleControlMonitorFailed)
+        let controller = HotkeyController(
+            handler: FakeHotkeyHandler(),
+            registrar: AnyHotkeyRegistrar(FakeHotkeyRegistrar()),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(
+                isAccessibilityTrusted: true,
+                isInputMonitoringTrusted: false
+            )
+        )
+
+        let status = try controller.start()
+
         XCTAssertEqual(status.doubleControlStatus, .needsInputMonitoring)
-        XCTAssertEqual(monitor.startCount, 0)
+        XCTAssertEqual(monitor.startCount, 1)
         XCTAssertTrue(status.doubleControlStatus.message?.contains("Input Monitoring permission") == true)
     }
 
-    func testRequestInputMonitoringPermissionRechecksAndStartsMonitor() throws {
+    func testRequestInputMonitoringPermissionRechecksAndStartsMonitorAfterMonitorFailure() throws {
         let monitor = FakeDoubleControlMonitor()
         let permissionChecker = FakeAccessibilityPermissionChecker(
             isAccessibilityTrusted: true,
@@ -249,12 +267,14 @@ final class HotkeyControllerTests: XCTestCase {
             accessibilityPermissionChecker: permissionChecker
         )
 
+        monitor.startError = HotkeyControllerError.doubleControlMonitorFailed
         XCTAssertEqual(try controller.start().doubleControlStatus, .needsInputMonitoring)
         permissionChecker.isInputMonitoringTrusted = true
+        monitor.startError = nil
         let status = controller.requestInputMonitoringPermission()
 
         XCTAssertEqual(permissionChecker.inputMonitoringRequestCount, 1)
-        XCTAssertEqual(monitor.startCount, 1)
+        XCTAssertEqual(monitor.startCount, 2)
         XCTAssertEqual(status.doubleControlStatus, .active)
     }
 

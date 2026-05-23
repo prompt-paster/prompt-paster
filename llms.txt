@@ -108,11 +108,11 @@ Default user library path:
 - Fallback global hotkey: configurable preset through `HotkeyController`;
   default is `Control + Option + Space`.
 - Double-tap trigger: configurable modifier through `HotkeyController`;
-  default is Double Control. The production path uses AppKit global
-  `NSEvent` modifier monitoring first, with the older `CGEvent` tap retained as
-  setup fallback. Double-modifier monitoring checks both Accessibility and
-  Input Monitoring permission, because macOS treats event listening as a
-  separate TCC grant.
+  default is Double Control. The production path tries the original low-level
+  `CGEvent` tap first, because that was the version confirmed working in manual
+  QA. AppKit global `NSEvent` monitoring remains a setup fallback. Input
+  Monitoring is advisory and only becomes the surfaced status if monitor startup
+  fails while that TCC grant is absent.
 - Trigger mode, fallback hotkey preset, double-tap modifier, double-tap timing,
   launch-at-login state, overlay display sizing, overlay font size, prompt
   preview character limits, optional prompt-card tag display, and prompt
@@ -135,7 +135,8 @@ Default user library path:
   advanced users.
 - Prompt cards use width-based column counts plus deterministic span/height
   helpers so dense prompts can take more room without changing result order or
-  shortcut assignment.
+  shortcut assignment. Minimum card heights are intentionally compact so the
+  grid spends more of each card on preview text instead of empty space.
 - Prompt selection shortcuts default to spatial center-keyboard letters assigned
   from the visible card layout. The Settings window can switch badges and key
   handling back to numeric `1`-`9` mode.

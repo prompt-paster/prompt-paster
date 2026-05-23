@@ -246,13 +246,13 @@ struct PromptOverlayState {
     static func previewLineLimit(for characterLimit: Int) -> Int {
         switch characterLimit {
         case ...80:
-            2
-        case ...180:
             3
+        case ...180:
+            4
         case ...320:
-            5
+            6
         default:
-            7
+            9
         }
     }
 
@@ -272,13 +272,10 @@ struct PromptOverlayState {
             return 1
         }
 
-        let metadataWeight = prompt.title.count
-            + (prompt.category?.count ?? 0)
-            + prompt.tags.prefix(5).reduce(0) { $0 + $1.count }
+        let metadataWeight = prompt.title.count + (prompt.category?.count ?? 0)
         let previewWeight = min(prompt.body.count, previewCharacterLimit)
         let shouldUseWideCard = metadataWeight >= 72
-            || previewWeight >= 220
-            || prompt.tags.count >= 4
+            || previewWeight >= 260
 
         return shouldUseWideCard ? 2 : 1
     }
@@ -481,19 +478,18 @@ struct PromptOverlayState {
         for prompt: Prompt,
         previewCharacterLimit: Int
     ) -> CGFloat {
-        let hasTags = !prompt.tags.isEmpty
         let hasLongPreview = min(prompt.body.count, previewCharacterLimit) > 140
         let hasLongTitle = prompt.title.count > 42
 
-        return switch (hasTags, hasLongPreview || hasLongTitle) {
+        return switch (hasLongPreview, hasLongTitle) {
         case (true, true):
-            188
+            142
         case (true, false):
-            164
-        case (false, true):
-            150
-        case (false, false):
             126
+        case (false, true):
+            118
+        case (false, false):
+            104
         }
     }
 

@@ -273,10 +273,10 @@ final class PromptOverlayStateTests: XCTestCase {
     }
 
     func testPreviewLineLimitScalesWithCharacterLimit() {
-        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 40), 2)
-        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 120), 3)
-        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 260), 5)
-        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 600), 7)
+        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 40), 3)
+        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 120), 4)
+        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 260), 6)
+        XCTAssertEqual(PromptOverlayState.previewLineLimit(for: 600), 9)
     }
 
     func testPromptCardColumnCountAdaptsToAvailableWidth() {
@@ -329,14 +329,14 @@ final class PromptOverlayStateTests: XCTestCase {
                 for: compactPrompt,
                 previewCharacterLimit: 80
             ),
-            126
+            104
         )
         XCTAssertEqual(
             PromptOverlayState.promptCardMinimumHeight(
                 for: densePrompt,
                 previewCharacterLimit: 260
             ),
-            188
+            142
         )
     }
 
