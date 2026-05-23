@@ -661,6 +661,8 @@ Tasks:
   linker signature and report the app as damaged after browser download.
 - Validate the DMG, including app bundle code-signature verification and launch
   smoke, through `scripts/validate-release-package.sh`.
+- For manually dispatched release reruns, force-update the requested release
+  tag to the validated workflow commit before uploading assets.
 - Upload the DMG as a workflow artifact.
 - Create or update the GitHub Release and attach the DMG.
 - Download the published stable `PromptPaster.dmg` release asset and run the

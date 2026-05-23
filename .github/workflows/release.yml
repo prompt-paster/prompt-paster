@@ -129,6 +129,13 @@ jobs:
           scripts/validate-release-package.sh "$DMG_PATH" "${validation_args[@]}"
           scripts/validate-release-package.sh "$STABLE_DMG_PATH" "${validation_args[@]}"
 
+      - name: Align release tag to validated commit
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          git tag --force "$TAG_NAME" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$TAG_NAME"
+
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
