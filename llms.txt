@@ -38,7 +38,13 @@ Sources/PromptPaster/
   Settings/
     SettingsView.swift
     SettingsWindowController.swift
+  LibraryManager/
+    PromptLibraryManagerState.swift
+    PromptLibraryManagerView.swift
+    PromptLibraryManagerViewModel.swift
+    PromptLibraryManagerWindowController.swift
 Tests/PromptPasterTests/
+  PromptLibraryManagerStateTests.swift
   PromptLibraryTests.swift
   PromptOverlayStateTests.swift
   PromptSearchTests.swift
@@ -67,6 +73,11 @@ scripts/
   `Sources/PromptPaster/Overlay/PromptOverlayState.swift`
 - Fallback global hotkey registration: `Sources/PromptPaster/Services/HotkeyController.swift`
 - Persisted preferences and launch-at-login state: `Sources/PromptPaster/Services/SettingsStore.swift`
+- Prompt library editor window, filtering, editing, validation, and save flow:
+  `Sources/PromptPaster/LibraryManager/PromptLibraryManagerWindowController.swift`,
+  `Sources/PromptPaster/LibraryManager/PromptLibraryManagerView.swift`,
+  `Sources/PromptPaster/LibraryManager/PromptLibraryManagerViewModel.swift`,
+  and `Sources/PromptPaster/LibraryManager/PromptLibraryManagerState.swift`
 
 ## Data Model and Storage
 
@@ -74,6 +85,10 @@ scripts/
 - Prompt library schema and validation: `Sources/PromptPaster/Models/PromptLibrary.swift`
 - JSON encoder/decoder setup: `Sources/PromptPaster/Services/PromptLibraryCoding.swift`
 - Application Support prompt store: `Sources/PromptPaster/Services/PromptStore.swift`
+- Prompt editor edits save through `PromptStore.save(_:)`, which validates the
+  full `PromptLibrary`, rejects stale saves when `prompts.json` changed outside
+  the editor, writes atomically, and updates the published in-memory library so
+  the overlay sees saved edits without moving local usage stats into JSON.
 - Bundled seed data: `Sources/PromptPaster/Resources/SeedPrompts.json`
 
 Default user library path:
@@ -97,6 +112,12 @@ Default user library path:
 - Current overlay scope: browse prompts as adaptive rectangular cards, search,
   filter, navigate, copy selected prompts, close after successful copy, and keep
   the overlay open on clipboard failure.
+- Current library editor scope: open from the status menu or Settings, search
+  prompts, filter by category and tag, edit title/body/category/tags, validate
+  before saving, protect unsaved drafts during navigation/reload, reject stale
+  saves after external file edits, reload while keeping the last valid library
+  on invalid JSON, and keep open/reload/reveal file actions available for
+  advanced users.
 - Prompt cards use width-based column counts plus deterministic span/height
   helpers so dense prompts can take more room without changing result order or
   shortcut assignment.

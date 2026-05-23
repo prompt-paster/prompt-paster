@@ -10,6 +10,11 @@ struct PromptStoreReloadResult: Equatable {
     }
 }
 
+struct PromptLibraryFileSignature: Equatable {
+    let byteCount: Int
+    let contentDigest: UInt64
+}
+
 @MainActor
 final class PromptStore: ObservableObject {
     static let applicationSupportFolderName = "Prompt Paster"
@@ -18,6 +23,7 @@ final class PromptStore: ObservableObject {
     @Published private(set) var library: PromptLibrary?
     @Published private(set) var validation: PromptLibraryValidation?
     @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var libraryFileSignature: PromptLibraryFileSignature?
 
     let libraryURL: URL
 
@@ -51,6 +57,7 @@ final class PromptStore: ObservableObject {
             let loadResult = try decoded.validatedForLoading()
             library = loadResult.library
             validation = loadResult.validation
+            libraryFileSignature = Self.fileSignature(for: data)
             lastErrorMessage = nil
             return PromptStoreReloadResult(
                 library: loadResult.library,
@@ -67,6 +74,24 @@ final class PromptStore: ObservableObject {
     func prepareLibraryFile() throws -> URL {
         try ensureLibraryFileExists()
         return libraryURL
+    }
+
+    @discardableResult
+    func save(_ library: PromptLibrary) throws -> PromptLibraryValidation {
+        try ensureLibraryFileExists()
+        let currentSignature = try currentLibraryFileSignature()
+        if let libraryFileSignature, currentSignature != libraryFileSignature {
+            throw PromptStoreError.libraryChangedOnDisk
+        }
+
+        let validation = try library.validated()
+        let data = try PromptLibraryCoding.makeEncoder().encode(library)
+        try data.write(to: libraryURL, options: .atomic)
+        self.library = library
+        self.validation = validation
+        libraryFileSignature = Self.fileSignature(for: data)
+        lastErrorMessage = nil
+        return validation
     }
 
     func recordError(_ error: Error) {
@@ -90,6 +115,19 @@ final class PromptStore: ObservableObject {
         try fileManager.copyItem(at: seedURL, to: libraryURL)
     }
 
+    private func currentLibraryFileSignature() throws -> PromptLibraryFileSignature {
+        try Self.fileSignature(for: Data(contentsOf: libraryURL))
+    }
+
+    private static func fileSignature(for data: Data) -> PromptLibraryFileSignature {
+        var digest: UInt64 = 14_695_981_039_346_656_037
+        for byte in data {
+            digest ^= UInt64(byte)
+            digest &*= 1_099_511_628_211
+        }
+        return PromptLibraryFileSignature(byteCount: data.count, contentDigest: digest)
+    }
+
     static func defaultApplicationSupportURL(fileManager: FileManager = .default) -> URL {
         let baseURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return baseURL.appendingPathComponent(applicationSupportFolderName, isDirectory: true)
@@ -102,11 +140,14 @@ final class PromptStore: ObservableObject {
 
 enum PromptStoreError: Error, LocalizedError {
     case seedResourceMissing
+    case libraryChangedOnDisk
 
     var errorDescription: String? {
         switch self {
         case .seedResourceMissing:
             "Bundled SeedPrompts.json could not be found."
+        case .libraryChangedOnDisk:
+            "prompts.json changed outside the editor. Reload the library before saving."
         }
     }
 }

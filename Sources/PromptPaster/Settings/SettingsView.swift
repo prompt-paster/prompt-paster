@@ -5,6 +5,7 @@ struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var promptUsageStore: PromptUsageStore
+    let openLibraryManager: () -> Void
     let fallbackHotkeyStatusMessage: String?
     let doubleControlStatus: DoubleControlTriggerStatus
     let triggerModeChanged: () -> Void
@@ -16,6 +17,7 @@ struct SettingsView: View {
         promptStore: PromptStore,
         settingsStore: SettingsStore,
         promptUsageStore: PromptUsageStore,
+        openLibraryManager: @escaping () -> Void = {},
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
         triggerModeChanged: @escaping () -> Void = {},
@@ -26,6 +28,7 @@ struct SettingsView: View {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
         self.promptUsageStore = promptUsageStore
+        self.openLibraryManager = openLibraryManager
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
         self.triggerModeChanged = triggerModeChanged
@@ -221,6 +224,10 @@ struct SettingsView: View {
                 }
 
                 HStack {
+                    Button("Edit Library") {
+                        openLibraryManager()
+                    }
+
                     Button("Open Prompt Library") {
                         do {
                             let libraryURL = try promptStore.prepareLibraryFile()
