@@ -706,4 +706,6 @@ Validation:
 - `scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg --launch-smoke`
 - GitHub Pages is enabled for `main` / `docs`.
 - `PromptPaster.dmg` is present on the latest release and the website download
-  URL resolves directly to the DMG.
+  URL resolves directly to the DMG. Because GitHub excludes prereleases from
+  `/releases/latest/download/...`, website-facing alpha releases are published
+  with `prerelease=false`.

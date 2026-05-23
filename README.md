@@ -152,9 +152,14 @@ Manual alpha release:
 ```bash
 gh workflow run release.yml \
   -f tag_name=v1alpha \
-  -f prerelease=true \
+  -f prerelease=false \
   -f notarize=false
 ```
+
+The website download button uses GitHub's `releases/latest/download` route.
+GitHub excludes prereleases from that route, so public website-facing alpha
+releases should be published with `prerelease=false` even when the tag name
+contains `alpha`.
 
 Tag releases also run automatically for tags matching `v*`.
 

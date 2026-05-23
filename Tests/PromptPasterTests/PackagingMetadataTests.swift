@@ -72,6 +72,8 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(workflow.contains("tags:"))
         XCTAssertTrue(workflow.contains("STABLE_DMG_PATH"))
         XCTAssertTrue(workflow.contains("dist/PromptPaster.dmg"))
+        XCTAssertTrue(workflow.contains("default: false"))
+        XCTAssertTrue(workflow.contains("--prerelease=false --latest"))
         XCTAssertTrue(workflow.contains("scripts/build-dmg.sh"))
         XCTAssertTrue(workflow.contains("cp \"$DMG_PATH\" \"$STABLE_DMG_PATH\""))
         XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$DMG_PATH\" --launch-smoke"))

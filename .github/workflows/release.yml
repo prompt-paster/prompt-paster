@@ -11,7 +11,7 @@ on:
         description: "Mark the GitHub Release as a prerelease"
         required: true
         type: boolean
-        default: true
+        default: false
       notarize:
         description: "Require Developer ID signing and Apple notarization"
         required: true
@@ -159,6 +159,8 @@ jobs:
           prerelease_args=()
           if [ "$IS_PRERELEASE" = "true" ]; then
             prerelease_args+=(--prerelease)
+          else
+            prerelease_args+=(--prerelease=false --latest)
           fi
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
