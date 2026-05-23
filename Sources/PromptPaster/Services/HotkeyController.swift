@@ -113,6 +113,19 @@ enum DoubleTapModifier: String, CaseIterable, Identifiable {
             .maskCommand
         }
     }
+
+    var eventModifierFlag: NSEvent.ModifierFlags {
+        switch self {
+        case .control:
+            .control
+        case .option:
+            .option
+        case .shift:
+            .shift
+        case .command:
+            .command
+        }
+    }
 }
 
 struct HotkeyShortcut: Equatable {
@@ -357,7 +370,7 @@ final class HotkeyController {
         doubleTapModifier: DoubleTapModifier = .control,
         handler: HotkeyTriggerHandling,
         registrar: AnyHotkeyRegistrar = AnyHotkeyRegistrar(CarbonHotkeyRegistrar()),
-        doubleControlMonitor: DoubleControlMonitoring = CGEventDoubleControlMonitor(),
+        doubleControlMonitor: DoubleControlMonitoring = ResilientDoubleControlMonitor(),
         accessibilityPermissionChecker: AccessibilityPermissionChecking = AccessibilityPermissionChecker(),
         doubleControlConfiguration: DoubleControlTapConfiguration = .default
     ) {
@@ -607,6 +620,113 @@ struct CarbonHotkeyRegistrar: HotkeyRegistrar {
 }
 
 @MainActor
+final class ResilientDoubleControlMonitor: DoubleControlMonitoring {
+    private let monitors: [DoubleControlMonitoring]
+    private var activeMonitor: DoubleControlMonitoring?
+
+    var isRunning: Bool {
+        activeMonitor?.isRunning ?? false
+    }
+
+    init(monitors: [DoubleControlMonitoring] = [
+        NSEventDoubleControlMonitor(),
+        CGEventDoubleControlMonitor()
+    ]) {
+        self.monitors = monitors
+    }
+
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws {
+        if let activeMonitor {
+            try activeMonitor.start(modifier: modifier, eventHandler: eventHandler)
+            return
+        }
+
+        for monitor in monitors {
+            do {
+                try monitor.start(modifier: modifier, eventHandler: eventHandler)
+                activeMonitor = monitor
+                return
+            } catch {
+                monitor.stop()
+            }
+        }
+
+        throw HotkeyControllerError.doubleControlMonitorFailed
+    }
+
+    func stop() {
+        activeMonitor?.stop()
+        activeMonitor = nil
+    }
+}
+
+@MainActor
+final class NSEventDoubleControlMonitor: DoubleControlMonitoring {
+    private var monitors: [Any] = []
+    private var eventHandler: (@MainActor (DoubleControlTapInput) -> Void)?
+    private var modifier: DoubleTapModifier = .control
+
+    var isRunning: Bool {
+        !monitors.isEmpty
+    }
+
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws {
+        guard monitors.isEmpty else {
+            self.modifier = modifier
+            self.eventHandler = eventHandler
+            return
+        }
+
+        self.modifier = modifier
+        self.eventHandler = eventHandler
+
+        guard let flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: { [weak self] event in
+            Task { @MainActor in
+                self?.handle(event)
+            }
+        }) else {
+            throw HotkeyControllerError.doubleControlMonitorFailed
+        }
+
+        guard let keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] event in
+            Task { @MainActor in
+                self?.handle(event)
+            }
+        }) else {
+            NSEvent.removeMonitor(flagsMonitor)
+            throw HotkeyControllerError.doubleControlMonitorFailed
+        }
+
+        monitors = [flagsMonitor, keyMonitor]
+    }
+
+    func stop() {
+        monitors.forEach(NSEvent.removeMonitor)
+        monitors = []
+        eventHandler = nil
+    }
+
+    private func handle(_ event: NSEvent) {
+        guard let input = DoubleControlEventInputMapper.input(
+            for: event.type,
+            keyCode: event.keyCode,
+            flags: event.modifierFlags,
+            timestamp: event.timestamp,
+            modifier: modifier
+        ) else {
+            return
+        }
+        eventHandler?(input)
+    }
+}
+
+@MainActor
 final class CGEventDoubleControlMonitor: DoubleControlMonitoring {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -706,6 +826,30 @@ final class CGEventDoubleControlMonitor: DoubleControlMonitoring {
 
 enum DoubleControlEventInputMapper {
     static func input(
+        for type: NSEvent.EventType,
+        keyCode: UInt16,
+        flags: NSEvent.ModifierFlags,
+        timestamp: TimeInterval,
+        modifier: DoubleTapModifier = .control
+    ) -> DoubleControlTapInput? {
+        switch type {
+        case .flagsChanged:
+            guard modifier.keyCodes.contains(CGKeyCode(keyCode)) else {
+                return .unrelatedInput(timestamp: timestamp)
+            }
+            return .controlChanged(
+                isPressed: flags.contains(modifier.eventModifierFlag),
+                otherModifiersPressed: hasOtherModifier(in: flags, excluding: modifier),
+                timestamp: timestamp
+            )
+        case .keyDown:
+            return .unrelatedInput(timestamp: timestamp)
+        default:
+            return nil
+        }
+    }
+
+    static func input(
         for type: CGEventType,
         keyCode: CGKeyCode,
         flags: CGEventFlags,
@@ -744,6 +888,19 @@ enum DoubleControlEventInputMapper {
         return modifierFlags.contains { candidate, flag in
             candidate != modifier && flags.contains(flag)
         } || flags.contains(.maskSecondaryFn)
+    }
+
+    private static func hasOtherModifier(in flags: NSEvent.ModifierFlags, excluding modifier: DoubleTapModifier) -> Bool {
+        let modifierFlags: [(DoubleTapModifier, NSEvent.ModifierFlags)] = [
+            (.control, .control),
+            (.option, .option),
+            (.shift, .shift),
+            (.command, .command)
+        ]
+
+        return modifierFlags.contains { candidate, flag in
+            candidate != modifier && flags.contains(flag)
+        } || flags.contains(.function)
     }
 }
 

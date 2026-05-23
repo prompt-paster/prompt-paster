@@ -319,7 +319,7 @@ final class HotkeyControllerTests: XCTestCase {
     func testDoubleControlEventMapperMapsLeftAndRightControlFlagsChanged() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Control),
                 flags: .maskControl,
                 timestamp: 2.0
@@ -329,7 +329,7 @@ final class HotkeyControllerTests: XCTestCase {
 
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_RightControl),
                 flags: [],
                 timestamp: 2.1
@@ -341,7 +341,7 @@ final class HotkeyControllerTests: XCTestCase {
     func testDoubleControlEventMapperFlagsOtherModifiers() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Control),
                 flags: [.maskControl, .maskAlternate],
                 timestamp: 3.0
@@ -353,7 +353,7 @@ final class HotkeyControllerTests: XCTestCase {
     func testDoubleControlEventMapperSupportsConfiguredModifiers() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Option),
                 flags: .maskAlternate,
                 timestamp: 6.0,
@@ -363,7 +363,7 @@ final class HotkeyControllerTests: XCTestCase {
         )
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Control),
                 flags: .maskControl,
                 timestamp: 6.1,
@@ -373,7 +373,7 @@ final class HotkeyControllerTests: XCTestCase {
         )
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Option),
                 flags: [.maskAlternate, .maskControl],
                 timestamp: 6.2,
@@ -383,10 +383,43 @@ final class HotkeyControllerTests: XCTestCase {
         )
     }
 
+    func testDoubleControlEventMapperMapsNSEventModifierEvents() {
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: NSEvent.EventType.flagsChanged,
+                keyCode: UInt16(kVK_Shift),
+                flags: .shift,
+                timestamp: 7.0,
+                modifier: .shift
+            ),
+            .controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 7.0)
+        )
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: NSEvent.EventType.flagsChanged,
+                keyCode: UInt16(kVK_RightShift),
+                flags: [],
+                timestamp: 7.1,
+                modifier: .shift
+            ),
+            .controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 7.1)
+        )
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: NSEvent.EventType.flagsChanged,
+                keyCode: UInt16(kVK_Shift),
+                flags: [.shift, .control],
+                timestamp: 7.2,
+                modifier: .shift
+            ),
+            .controlChanged(isPressed: true, otherModifiersPressed: true, timestamp: 7.2)
+        )
+    }
+
     func testDoubleControlEventMapperTreatsNonControlModifierAndKeyDownAsInterruptions() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .flagsChanged,
+                for: CGEventType.flagsChanged,
                 keyCode: CGKeyCode(kVK_Option),
                 flags: .maskAlternate,
                 timestamp: 4.0
@@ -395,7 +428,7 @@ final class HotkeyControllerTests: XCTestCase {
         )
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
-                for: .keyDown,
+                for: CGEventType.keyDown,
                 keyCode: CGKeyCode(kVK_ANSI_A),
                 flags: [],
                 timestamp: 4.1
@@ -408,6 +441,25 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertTrue(DoubleControlEventInputMapper.isDisabledTapEvent(.tapDisabledByTimeout))
         XCTAssertTrue(DoubleControlEventInputMapper.isDisabledTapEvent(.tapDisabledByUserInput))
         XCTAssertFalse(DoubleControlEventInputMapper.isDisabledTapEvent(.flagsChanged))
+    }
+
+    func testResilientDoubleControlMonitorFallsBackWhenPrimaryMonitorFails() throws {
+        let primary = FakeDoubleControlMonitor(startError: HotkeyControllerError.doubleControlMonitorFailed)
+        let fallback = FakeDoubleControlMonitor()
+        let monitor = ResilientDoubleControlMonitor(monitors: [primary, fallback])
+        var receivedInputs: [DoubleControlTapInput] = []
+
+        try monitor.start(modifier: .shift) { input in
+            receivedInputs.append(input)
+        }
+        fallback.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 8.0))
+
+        XCTAssertEqual(primary.startCount, 1)
+        XCTAssertEqual(primary.stopCount, 1)
+        XCTAssertEqual(fallback.startCount, 1)
+        XCTAssertEqual(fallback.startedModifiers, [.shift])
+        XCTAssertTrue(monitor.isRunning)
+        XCTAssertEqual(receivedInputs, [.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 8.0)])
     }
 }
 

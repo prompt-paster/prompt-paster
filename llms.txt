@@ -108,7 +108,9 @@ Default user library path:
 - Fallback global hotkey: configurable preset through `HotkeyController`;
   default is `Control + Option + Space`.
 - Double-tap trigger: configurable modifier through `HotkeyController`;
-  default is Double Control.
+  default is Double Control. The production path uses AppKit global
+  `NSEvent` modifier monitoring first, with the older `CGEvent` tap retained as
+  setup fallback.
 - Trigger mode, fallback hotkey preset, double-tap modifier, double-tap timing,
   launch-at-login state, overlay display sizing, overlay font size, prompt
   preview character limits, and prompt selection shortcut mode are managed by
