@@ -104,8 +104,10 @@ scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg --launch-smoke
 ## Signing and Notarization
 
 Local validation does not require Apple Developer credentials. By default,
-`scripts/build-dmg.sh` leaves the app unsigned and validates the generated DMG
-structure.
+`scripts/build-dmg.sh` applies an ad-hoc signature to the app bundle and
+validates the generated DMG structure plus the app signature. Ad-hoc signed
+builds are still unsigned alpha builds from Gatekeeper's perspective, but they
+must not ship with a broken bundle signature that macOS reports as damaged.
 
 For a signed release, provide a Developer ID Application identity:
 
@@ -124,11 +126,11 @@ NOTARIZE=1 \
 scripts/build-dmg.sh
 ```
 
-The signing path signs the app bundle with hardened runtime options, then signs
-the generated DMG container before optional notarization. The app signing step
-uses `Packaging/Entitlements.plist`. The entitlements file is intentionally
-empty for now because Prompt Paster is a local clipboard/menu-bar app with no
-sandbox, network, or Apple Events requirements.
+The Developer ID signing path signs the app bundle with hardened runtime
+options, then signs the generated DMG container before optional notarization.
+The app signing step uses `Packaging/Entitlements.plist`. The entitlements file
+is intentionally empty for now because Prompt Paster is a local
+clipboard/menu-bar app with no sandbox, network, or Apple Events requirements.
 
 When `NOTARIZE=1` is set, `CODESIGN_IDENTITY` is required and the script fails
 before building if it is missing.

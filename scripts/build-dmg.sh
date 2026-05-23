@@ -34,7 +34,13 @@ if [ -n "$CODESIGN_IDENTITY" ]; then
         "$APP_DIR"
     codesign --verify --strict --deep --verbose=2 "$APP_DIR"
 else
-    echo "CODESIGN_IDENTITY is not set; leaving app unsigned for local validation."
+    echo "CODESIGN_IDENTITY is not set; applying an ad-hoc signature for unsigned local validation."
+    codesign \
+        --force \
+        --deep \
+        --sign - \
+        "$APP_DIR"
+    codesign --verify --strict --deep --verbose=2 "$APP_DIR"
 fi
 
 rm -rf "$STAGING_DIR" "$DMG_PATH"

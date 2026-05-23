@@ -76,10 +76,36 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(workflow.contains("--prerelease=false --latest"))
         XCTAssertTrue(workflow.contains("scripts/build-dmg.sh"))
         XCTAssertTrue(workflow.contains("cp \"$DMG_PATH\" \"$STABLE_DMG_PATH\""))
-        XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$DMG_PATH\" --launch-smoke"))
+        XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$DMG_PATH\" \"${validation_args[@]}\""))
+        XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$STABLE_DMG_PATH\" \"${validation_args[@]}\""))
         XCTAssertTrue(workflow.contains("actions/upload-artifact@v4"))
         XCTAssertTrue(workflow.contains("gh release create"))
         XCTAssertTrue(workflow.contains("gh release upload"))
+        XCTAssertTrue(workflow.contains("Validate published release download"))
+        XCTAssertTrue(workflow.contains("gh release download \"$TAG_NAME\""))
+        XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$download_dir/PromptPaster.dmg\""))
+    }
+
+    func testPackagingScriptsValidateBundleSignatures() throws {
+        let root = try repositoryRoot()
+        let buildDMG = try String(
+            contentsOf: root.appendingPathComponent("scripts").appendingPathComponent("build-dmg.sh"),
+            encoding: .utf8
+        )
+        let validator = try String(
+            contentsOf: root.appendingPathComponent("scripts").appendingPathComponent("validate-release-package.sh"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(buildDMG.contains("applying an ad-hoc signature"))
+        XCTAssertTrue(buildDMG.contains("--sign -"))
+        XCTAssertTrue(buildDMG.contains("codesign --verify --strict --deep --verbose=2 \"$APP_DIR\""))
+        XCTAssertTrue(validator.contains("codesign --verify --strict --deep --verbose=2 \"$APP_DIR\""))
+        XCTAssertTrue(validator.contains("com.apple.quarantine"))
+        XCTAssertTrue(validator.contains("PromptPasterReleaseValidator"))
+        XCTAssertTrue(validator.contains("codesign --verify --strict --deep --verbose=2 \"$QUARANTINE_CHECK_DIR/$APP_NAME\""))
+        XCTAssertTrue(validator.contains("--expect-notarized"))
+        XCTAssertTrue(validator.contains("spctl --assess --type execute --verbose=4 \"$APP_DIR\""))
     }
 
     func testGitHubPagesSiteLinksDirectlyToStableDMGDownload() throws {

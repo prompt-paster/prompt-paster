@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo "Usage: $0 <PromptPaster.dmg> [--launch-smoke]" >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
+    echo "Usage: $0 <PromptPaster.dmg> [--launch-smoke] [--expect-notarized]" >&2
     exit 64
 fi
 
 DMG_PATH="$1"
-LAUNCH_SMOKE="${2:-}"
+LAUNCH_SMOKE=0
+EXPECT_NOTARIZED=0
 APP_NAME="Prompt Paster.app"
 EXECUTABLE_NAME="PromptPaster"
 
-if [ "$LAUNCH_SMOKE" != "" ] && [ "$LAUNCH_SMOKE" != "--launch-smoke" ]; then
-    echo "Unknown option: $LAUNCH_SMOKE" >&2
-    exit 64
-fi
+shift
+for option in "$@"; do
+    case "$option" in
+        --launch-smoke)
+            LAUNCH_SMOKE=1
+            ;;
+        --expect-notarized)
+            EXPECT_NOTARIZED=1
+            ;;
+        *)
+            echo "Unknown option: $option" >&2
+            exit 64
+            ;;
+    esac
+done
 
 if [ ! -f "$DMG_PATH" ]; then
     echo "Missing DMG artifact: $DMG_PATH" >&2
@@ -24,9 +36,13 @@ fi
 TMP_BASE="${TMPDIR:-/tmp}"
 TMP_BASE="${TMP_BASE%/}"
 MOUNT_DIR="$(mktemp -d "$TMP_BASE/prompt-paster-dmg.XXXXXX")"
+QUARANTINE_CHECK_DIR=""
 ATTACHED=0
 
 cleanup() {
+    if [ -n "$QUARANTINE_CHECK_DIR" ]; then
+        rm -rf "$QUARANTINE_CHECK_DIR"
+    fi
     if [ "$ATTACHED" -eq 1 ]; then
         for _ in {1..5}; do
             if hdiutil detach "$MOUNT_DIR" -quiet; then
@@ -62,8 +78,21 @@ test -L "$MOUNT_DIR/Applications"
 test -f "$MOUNT_DIR/README.txt"
 
 plutil -lint "$INFO_PLIST" >/dev/null
+codesign --verify --strict --deep --verbose=2 "$APP_DIR"
 
-if [ "$LAUNCH_SMOKE" = "--launch-smoke" ]; then
+QUARANTINE_CHECK_DIR="$(mktemp -d "$TMP_BASE/prompt-paster-quarantine.XXXXXX")"
+cp -R "$APP_DIR" "$QUARANTINE_CHECK_DIR/"
+xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");PromptPasterReleaseValidator;" \
+    "$QUARANTINE_CHECK_DIR/$APP_NAME"
+codesign --verify --strict --deep --verbose=2 "$QUARANTINE_CHECK_DIR/$APP_NAME"
+rm -rf "$QUARANTINE_CHECK_DIR"
+QUARANTINE_CHECK_DIR=""
+
+if [ "$EXPECT_NOTARIZED" -eq 1 ]; then
+    spctl --assess --type execute --verbose=4 "$APP_DIR"
+fi
+
+if [ "$LAUNCH_SMOKE" -eq 1 ]; then
     EXECUTABLE_REAL="$(cd "$(dirname "$EXECUTABLE")" && pwd -P)/$EXECUTABLE_NAME"
 
     find_mounted_app_pid() {

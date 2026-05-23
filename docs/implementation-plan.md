@@ -656,11 +656,15 @@ Tasks:
   - `swift test`
   - `plutil -lint Packaging/Info.plist`
   - `git diff --check`
-- Build the release DMG through `scripts/build-dmg.sh`.
-- Validate the DMG, including launch smoke, through
-  `scripts/validate-release-package.sh`.
+- Build the release DMG through `scripts/build-dmg.sh`; unsigned alpha builds
+  must ad-hoc sign the final `.app` bundle so macOS does not inherit a stale
+  linker signature and report the app as damaged after browser download.
+- Validate the DMG, including app bundle code-signature verification and launch
+  smoke, through `scripts/validate-release-package.sh`.
 - Upload the DMG as a workflow artifact.
 - Create or update the GitHub Release and attach the DMG.
+- Download the published stable `PromptPaster.dmg` release asset and run the
+  same validator on that downloaded artifact before the workflow succeeds.
 - Support optional Developer ID signing and notarization through GitHub Actions
   secrets without requiring those secrets for unsigned alpha releases.
 
@@ -677,7 +681,8 @@ Validation:
 
 - Manual workflow dispatch can publish `v1alpha`.
 - The release page contains the generated DMG.
-- Unsigned alpha releases work without Apple secrets.
+- Unsigned alpha releases work without Apple secrets and pass bundle-signature
+  validation from the mounted DMG.
 - Notarized releases fail before building when required Apple secrets are
   missing.
 

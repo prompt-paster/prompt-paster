@@ -122,7 +122,12 @@ jobs:
       - name: Validate DMG with launch smoke
         run: |
           set -euo pipefail
-          scripts/validate-release-package.sh "$DMG_PATH" --launch-smoke
+          validation_args=(--launch-smoke)
+          if [ "$REQUIRE_NOTARIZATION" = "true" ]; then
+            validation_args+=(--expect-notarized)
+          fi
+          scripts/validate-release-package.sh "$DMG_PATH" "${validation_args[@]}"
+          scripts/validate-release-package.sh "$STABLE_DMG_PATH" "${validation_args[@]}"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -176,3 +181,19 @@ jobs:
               --notes-file "$release_notes" \
               "${prerelease_args[@]}"
           fi
+
+      - name: Validate published release download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          download_dir="$(mktemp -d)"
+          gh release download "$TAG_NAME" \
+            --pattern "PromptPaster.dmg" \
+            --dir "$download_dir" \
+            --clobber
+          validation_args=(--launch-smoke)
+          if [ "$REQUIRE_NOTARIZATION" = "true" ]; then
+            validation_args+=(--expect-notarized)
+          fi
+          scripts/validate-release-package.sh "$download_dir/PromptPaster.dmg" "${validation_args[@]}"

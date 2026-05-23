@@ -148,12 +148,14 @@ Default user library path:
 - Local DMG builder: `scripts/build-dmg.sh`
 - Icon regeneration helper: `scripts/generate-app-icon.sh`
 - Menu-bar icon preview helper: `scripts/generate-status-icon-preview.sh`
-- DMG structure and optional launch validator: `scripts/validate-release-package.sh`
+- DMG structure, bundle-signature, optional notarization, and optional launch
+  validator: `scripts/validate-release-package.sh`
 - GitHub release workflow behavior: manual dispatch or `v*` tags build the DMG
   on macOS, optionally import a Developer ID Application certificate from
   secrets, optionally notarize, upload the DMG artifact, and create/update the
   GitHub Release with the DMG attached. The workflow uploads both a versioned
-  DMG and stable `PromptPaster.dmg` alias for direct website downloads.
+  DMG and stable `PromptPaster.dmg` alias for direct website downloads, then
+  downloads and validates the published stable asset.
 - GitHub Pages minisite: `docs/index.html`, published from the `docs/` folder
   on `main` at `https://prompt-paster.github.io/prompt-paster/`.
 - Build output is ignored under `.build/` and `dist/`.
