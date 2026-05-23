@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create or update"
+        required: true
+        default: "v1alpha"
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease"
+        required: true
+        type: boolean
+        default: true
+      notarize:
+        description: "Require Developer ID signing and Apple notarization"
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build DMG and publish release
+    runs-on: macos-14
+    env:
+      TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+      IS_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+      REQUIRE_NOTARIZATION: ${{ github.event_name == 'workflow_dispatch' && inputs.notarize || 'false' }}
+      CODESIGN_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64 }}
+      CODESIGN_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD }}
+      CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        run: |
+          set -euo pipefail
+          version="$(plutil -extract CFBundleShortVersionString raw Packaging/Info.plist)"
+          dmg_path="dist/PromptPaster-${version}.dmg"
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "DMG_PATH=$dmg_path" >> "$GITHUB_ENV"
+          echo "Release tag: $TAG_NAME"
+          echo "App version: $version"
+          echo "DMG path: $dmg_path"
+
+      - name: Validate signing and notarization configuration
+        run: |
+          set -euo pipefail
+          if [ "$REQUIRE_NOTARIZATION" = "true" ]; then
+            missing=0
+            for name in CODESIGN_CERTIFICATE_BASE64 CODESIGN_CERTIFICATE_PASSWORD CODESIGN_IDENTITY APPLE_ID APPLE_TEAM_ID APP_SPECIFIC_PASSWORD; do
+              if [ -z "${!name:-}" ]; then
+                echo "::error::Missing required secret/env for notarized release: $name"
+                missing=1
+              fi
+            done
+            if [ "$missing" -ne 0 ]; then
+              exit 1
+            fi
+          fi
+
+      - name: Import Developer ID certificate
+        if: env.CODESIGN_CERTIFICATE_BASE64 != ''
+        run: |
+          set -euo pipefail
+          keychain_path="$RUNNER_TEMP/prompt-paster-release.keychain-db"
+          certificate_path="$RUNNER_TEMP/developer-id-application.p12"
+          keychain_password="$(uuidgen)"
+
+          echo "$CODESIGN_CERTIFICATE_BASE64" | base64 -D > "$certificate_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -P "$CODESIGN_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" $(security list-keychains -d user | sed 's/[ "]//g')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path"
+
+      - name: Validate Swift package
+        run: |
+          set -euo pipefail
+          swift build
+          swift test
+          plutil -lint Packaging/Info.plist
+          git diff --check
+
+      - name: Build DMG
+        env:
+          NOTARIZE: ${{ env.REQUIRE_NOTARIZATION == 'true' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          scripts/build-dmg.sh
+
+      - name: Validate DMG with launch smoke
+        run: |
+          set -euo pipefail
+          scripts/validate-release-package.sh "$DMG_PATH" --launch-smoke
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PromptPaster-${{ env.APP_VERSION }}-dmg
+          path: ${{ env.DMG_PATH }}
+          if-no-files-found: error
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_notes="$(mktemp)"
+          cat > "$release_notes" <<NOTES
+          Prompt Paster ${TAG_NAME}
+
+          macOS DMG artifact built by GitHub Actions from commit ${GITHUB_SHA}.
+
+          Install:
+          1. Download ${DMG_PATH##*/}.
+          2. Open the DMG.
+          3. Drag Prompt Paster.app to Applications.
+          4. Launch Prompt Paster from Applications.
+
+          Notes:
+          - Fallback trigger: Control+Option+Space.
+          - Double-Control requires Accessibility permission in System Settings.
+          - Signing/notarization is controlled by release workflow secrets and the notarize workflow input.
+          NOTES
+
+          prerelease_args=()
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            prerelease_args+=(--prerelease)
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
+            gh release edit "$TAG_NAME" \
+              --title "Prompt Paster ${TAG_NAME}" \
+              --notes-file "$release_notes" \
+              "${prerelease_args[@]}"
+          else
+            gh release create "$TAG_NAME" "$DMG_PATH" \
+              --target "$GITHUB_SHA" \
+              --title "Prompt Paster ${TAG_NAME}" \
+              --notes-file "$release_notes" \
+              "${prerelease_args[@]}"
+          fi

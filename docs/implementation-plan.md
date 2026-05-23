@@ -640,3 +640,43 @@ Validation:
 5. `SHORTCUTS-1`: Add spatial letter shortcut assignment.
 6. `ORDERING-1`: Add configurable ordering and usage ranking.
 7. `LIBRARY-UI-1`: Add prompt library manager.
+
+## Release Automation Follow-Up
+
+### `RELEASE-1`: Add GitHub Actions DMG release publishing
+
+Goal: make GitHub the source of release artifacts by building the DMG on a
+GitHub-hosted macOS runner and publishing it on a GitHub Release.
+
+Tasks:
+
+- Add a release workflow triggered by manual dispatch and `v*` tags.
+- Run the validation suite before publishing:
+  - `swift build`
+  - `swift test`
+  - `plutil -lint Packaging/Info.plist`
+  - `git diff --check`
+- Build the release DMG through `scripts/build-dmg.sh`.
+- Validate the DMG, including launch smoke, through
+  `scripts/validate-release-package.sh`.
+- Upload the DMG as a workflow artifact.
+- Create or update the GitHub Release and attach the DMG.
+- Support optional Developer ID signing and notarization through GitHub Actions
+  secrets without requiring those secrets for unsigned alpha releases.
+
+Required secrets for signed/notarized releases:
+
+- `APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64`
+- `APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD`
+- `CODESIGN_IDENTITY`
+- `APPLE_ID`
+- `APPLE_TEAM_ID`
+- `APP_SPECIFIC_PASSWORD`
+
+Validation:
+
+- Manual workflow dispatch can publish `v1alpha`.
+- The release page contains the generated DMG.
+- Unsigned alpha releases work without Apple secrets.
+- Notarized releases fail before building when required Apple secrets are
+  missing.

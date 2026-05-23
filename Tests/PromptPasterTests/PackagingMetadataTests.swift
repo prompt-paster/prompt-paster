@@ -57,6 +57,45 @@ final class PackagingMetadataTests: XCTestCase {
         )
     }
 
+    func testReleaseWorkflowBuildsValidatesAndPublishesDMG() throws {
+        let workflowURL = try repositoryRoot()
+            .appendingPathComponent(".github")
+            .appendingPathComponent("workflows")
+            .appendingPathComponent("release.yml")
+        let workflow = try String(contentsOf: workflowURL, encoding: .utf8)
+
+        XCTAssertTrue(workflow.contains("workflow_dispatch"))
+        XCTAssertTrue(workflow.contains("push:"))
+        XCTAssertTrue(workflow.contains("tags:"))
+        XCTAssertTrue(workflow.contains("scripts/build-dmg.sh"))
+        XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$DMG_PATH\" --launch-smoke"))
+        XCTAssertTrue(workflow.contains("actions/upload-artifact@v4"))
+        XCTAssertTrue(workflow.contains("gh release create"))
+        XCTAssertTrue(workflow.contains("gh release upload"))
+    }
+
+    func testReleaseWorkflowSupportsSigningAndNotarizationSecrets() throws {
+        let workflowURL = try repositoryRoot()
+            .appendingPathComponent(".github")
+            .appendingPathComponent("workflows")
+            .appendingPathComponent("release.yml")
+        let workflow = try String(contentsOf: workflowURL, encoding: .utf8)
+        let requiredSecretNames = [
+            "APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64",
+            "APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD",
+            "CODESIGN_IDENTITY",
+            "APPLE_ID",
+            "APPLE_TEAM_ID",
+            "APP_SPECIFIC_PASSWORD"
+        ]
+
+        for secretName in requiredSecretNames {
+            XCTAssertTrue(workflow.contains(secretName), "Release workflow should reference \(secretName)")
+        }
+        XCTAssertTrue(workflow.contains("security import"))
+        XCTAssertTrue(workflow.contains("NOTARIZE"))
+    }
+
     private func repositoryRoot() throws -> URL {
         var url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 

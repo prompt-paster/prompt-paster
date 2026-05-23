@@ -7,6 +7,9 @@ agent prompts from an overlay and copying them to the clipboard.
 
 ```text
 Package.swift
+.github/
+  workflows/
+    release.yml
 Packaging/
   Entitlements.plist
   Info.plist
@@ -134,6 +137,7 @@ Default user library path:
 ## Configuration and Packaging
 
 - SwiftPM configuration: `Package.swift`
+- GitHub release workflow: `.github/workflows/release.yml`
 - User preferences and login-item integration: `Sources/PromptPaster/Services/SettingsStore.swift`
 - App bundle metadata: `Packaging/Info.plist`
 - Checked-in app icon: `Packaging/PromptPaster.icns`
@@ -143,6 +147,10 @@ Default user library path:
 - Icon regeneration helper: `scripts/generate-app-icon.sh`
 - Menu-bar icon preview helper: `scripts/generate-status-icon-preview.sh`
 - DMG structure and optional launch validator: `scripts/validate-release-package.sh`
+- GitHub release workflow behavior: manual dispatch or `v*` tags build the DMG
+  on macOS, optionally import a Developer ID Application certificate from
+  secrets, optionally notarize, upload the DMG artifact, and create/update the
+  GitHub Release with the DMG attached.
 - Build output is ignored under `.build/` and `dist/`.
 
 ## Planning and Agent Context

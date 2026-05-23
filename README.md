@@ -133,6 +133,40 @@ sandbox, network, or Apple Events requirements.
 When `NOTARIZE=1` is set, `CODESIGN_IDENTITY` is required and the script fails
 before building if it is missing.
 
+## GitHub Releases
+
+The release workflow at `.github/workflows/release.yml` builds and validates the
+DMG on a GitHub-hosted macOS runner, uploads the DMG as a workflow artifact, and
+creates or updates a GitHub Release with the DMG attached.
+
+Manual alpha release:
+
+```bash
+gh workflow run release.yml \
+  -f tag_name=v1alpha \
+  -f prerelease=true \
+  -f notarize=false
+```
+
+Tag releases also run automatically for tags matching `v*`.
+
+Unsigned releases do not require repository secrets. Signed and notarized
+releases require these GitHub Actions secrets:
+
+```text
+APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64
+APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD
+CODESIGN_IDENTITY
+APPLE_ID
+APPLE_TEAM_ID
+APP_SPECIFIC_PASSWORD
+```
+
+`APPLE_DEVELOPER_ID_APPLICATION_CERTIFICATE_BASE64` should contain a base64
+encoded `.p12` Developer ID Application certificate. When the workflow's
+`notarize` input is true, all signing and Apple account secrets are required and
+the workflow fails before building if any are missing.
+
 ## Install and Permissions
 
 1. Open the DMG.
