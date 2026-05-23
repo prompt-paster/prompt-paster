@@ -13,7 +13,7 @@ enum TriggerMode: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .doubleControlWithFallback:
-            "Double Control + fallback hotkey"
+            "Double-tap modifier + fallback hotkey"
         case .fallbackHotkeyOnly:
             "Fallback hotkey only"
         }
@@ -55,6 +55,30 @@ enum PromptOrderingMode: String, CaseIterable, Identifiable {
             "Most used"
         case .recentlyUsed:
             "Recently used"
+        }
+    }
+}
+
+enum OverlayFontSize: String, CaseIterable, Identifiable {
+    case small
+    case standard
+    case large
+    case extraLarge
+
+    var id: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .small:
+            "Small"
+        case .standard:
+            "Standard"
+        case .large:
+            "Large"
+        case .extraLarge:
+            "Extra Large"
         }
     }
 }
@@ -113,6 +137,9 @@ final class SettingsStore: ObservableObject {
         static let promptSelectionShortcutMode = "settings.promptSelectionShortcutMode"
         static let promptOrderingMode = "settings.promptOrderingMode"
         static let promptOrderingOverridesByCategoryID = "settings.promptOrderingOverridesByCategoryID"
+        static let overlayFontSize = "settings.overlayFontSize"
+        static let fallbackHotkeyPreset = "settings.fallbackHotkeyPreset"
+        static let doubleTapModifier = "settings.doubleTapModifier"
     }
 
     nonisolated static let defaultDoubleControlThresholdMilliseconds = 350
@@ -136,6 +163,16 @@ final class SettingsStore: ObservableObject {
             defaults.set(triggerMode.rawValue, forKey: Keys.triggerMode)
         }
     }
+    @Published var fallbackHotkeyPreset: FallbackHotkeyPreset {
+        didSet {
+            defaults.set(fallbackHotkeyPreset.rawValue, forKey: Keys.fallbackHotkeyPreset)
+        }
+    }
+    @Published var doubleTapModifier: DoubleTapModifier {
+        didSet {
+            defaults.set(doubleTapModifier.rawValue, forKey: Keys.doubleTapModifier)
+        }
+    }
 
     @Published private(set) var doubleControlThresholdMilliseconds: Int
     @Published var overlaySizeMode: OverlaySizeMode {
@@ -147,6 +184,11 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var overlayFixedWidthPixels: Int
     @Published private(set) var overlayFixedHeightPixels: Int
     @Published private(set) var promptPreviewCharacterLimit: Int
+    @Published var overlayFontSize: OverlayFontSize {
+        didSet {
+            defaults.set(overlayFontSize.rawValue, forKey: Keys.overlayFontSize)
+        }
+    }
     @Published var promptSelectionShortcutMode: PromptSelectionShortcutMode {
         didSet {
             defaults.set(promptSelectionShortcutMode.rawValue, forKey: Keys.promptSelectionShortcutMode)
@@ -177,6 +219,18 @@ final class SettingsStore: ObservableObject {
             self.triggerMode = triggerMode
         } else {
             self.triggerMode = .doubleControlWithFallback
+        }
+        if let rawFallbackHotkeyPreset = defaults.string(forKey: Keys.fallbackHotkeyPreset),
+           let fallbackHotkeyPreset = FallbackHotkeyPreset(rawValue: rawFallbackHotkeyPreset) {
+            self.fallbackHotkeyPreset = fallbackHotkeyPreset
+        } else {
+            self.fallbackHotkeyPreset = .controlOptionSpace
+        }
+        if let rawDoubleTapModifier = defaults.string(forKey: Keys.doubleTapModifier),
+           let doubleTapModifier = DoubleTapModifier(rawValue: rawDoubleTapModifier) {
+            self.doubleTapModifier = doubleTapModifier
+        } else {
+            self.doubleTapModifier = .control
         }
 
         let storedThreshold = defaults.integer(forKey: Keys.doubleControlThresholdMilliseconds)
@@ -220,6 +274,12 @@ final class SettingsStore: ObservableObject {
                 defaultValue: Self.defaultPromptPreviewCharacterLimit
             )
         )
+        if let rawOverlayFontSize = defaults.string(forKey: Keys.overlayFontSize),
+           let overlayFontSize = OverlayFontSize(rawValue: rawOverlayFontSize) {
+            self.overlayFontSize = overlayFontSize
+        } else {
+            self.overlayFontSize = .standard
+        }
         if let rawShortcutMode = defaults.string(forKey: Keys.promptSelectionShortcutMode),
            let shortcutMode = PromptSelectionShortcutMode(rawValue: rawShortcutMode) {
             self.promptSelectionShortcutMode = shortcutMode
@@ -255,6 +315,18 @@ final class SettingsStore: ObservableObject {
             tapThreshold: TimeInterval(doubleControlThresholdMilliseconds) / 1_000,
             debounceInterval: DoubleControlTapConfiguration.default.debounceInterval
         )
+    }
+
+    var fallbackHotkeyShortcut: HotkeyShortcut {
+        fallbackHotkeyPreset.shortcut
+    }
+
+    var fallbackHotkeyDisplayName: String {
+        fallbackHotkeyPreset.displayName
+    }
+
+    var doubleTapDisplayName: String {
+        doubleTapModifier.doubleTapDisplayName
     }
 
     var doubleControlThresholdDisplayValue: String {

@@ -72,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         let menu = NSMenu()
 
         menu.addItem(
-            withTitle: "Open Prompt Paster (\(HotkeyDisplay.fallbackShortcut))",
+            withTitle: "Open Prompt Paster (\(settingsStore.fallbackHotkeyDisplayName))",
             action: #selector(openPromptPaster),
             keyEquivalent: ""
         )
@@ -157,7 +157,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
 
     private func startHotkeys() {
         hotkeyController = HotkeyController(
+            shortcut: settingsStore.fallbackHotkeyShortcut,
             triggerMode: settingsStore.triggerMode,
+            doubleTapModifier: settingsStore.doubleTapModifier,
             handler: self,
             doubleControlConfiguration: settingsStore.doubleControlConfiguration
         )
@@ -175,6 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private func restartHotkeys() {
         hotkeyController?.stop()
         startHotkeys()
+        statusItem?.menu = buildMenu()
         settingsController.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         settingsController.doubleControlStatus = doubleControlStatus
     }

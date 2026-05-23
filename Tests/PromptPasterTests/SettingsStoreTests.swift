@@ -10,6 +10,11 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(defaults: defaults, loginItemManager: loginItemManager)
 
         XCTAssertEqual(store.triggerMode, .doubleControlWithFallback)
+        XCTAssertEqual(store.fallbackHotkeyPreset, .controlOptionSpace)
+        XCTAssertEqual(store.fallbackHotkeyShortcut, .controlOptionSpace)
+        XCTAssertEqual(store.fallbackHotkeyDisplayName, "Control + Option + Space")
+        XCTAssertEqual(store.doubleTapModifier, .control)
+        XCTAssertEqual(store.doubleTapDisplayName, "Double Control")
         XCTAssertEqual(store.doubleControlThresholdMilliseconds, 350)
         XCTAssertEqual(store.doubleControlConfiguration.tapThreshold, 0.35)
         XCTAssertEqual(store.overlaySizeMode, .percentageOfDisplay)
@@ -17,6 +22,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.overlayFixedWidthPixels, 1100)
         XCTAssertEqual(store.overlayFixedHeightPixels, 720)
         XCTAssertEqual(store.promptPreviewCharacterLimit, 260)
+        XCTAssertEqual(store.overlayFontSize, .standard)
         XCTAssertEqual(store.promptSelectionShortcutMode, .spatialLetters)
         XCTAssertEqual(store.promptOrderingMode, .libraryOrder)
         XCTAssertEqual(store.promptOrderingOverridesByCategoryID, [:])
@@ -28,23 +34,30 @@ final class SettingsStoreTests: XCTestCase {
         let store = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
 
         store.triggerMode = .fallbackHotkeyOnly
+        store.fallbackHotkeyPreset = .controlOptionP
+        store.doubleTapModifier = .option
         store.setDoubleControlThresholdMilliseconds(425)
         store.overlaySizeMode = .fixedPixels
         store.setOverlayDisplayPercentage(65)
         store.setOverlayFixedWidthPixels(1320)
         store.setOverlayFixedHeightPixels(840)
         store.setPromptPreviewCharacterLimit(180)
+        store.overlayFontSize = .large
         store.promptSelectionShortcutMode = .numbers
         store.promptOrderingMode = .mostUsed
 
         let reloadedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
         XCTAssertEqual(reloadedStore.triggerMode, .fallbackHotkeyOnly)
+        XCTAssertEqual(reloadedStore.fallbackHotkeyPreset, .controlOptionP)
+        XCTAssertEqual(reloadedStore.fallbackHotkeyShortcut, FallbackHotkeyPreset.controlOptionP.shortcut)
+        XCTAssertEqual(reloadedStore.doubleTapModifier, .option)
         XCTAssertEqual(reloadedStore.doubleControlThresholdMilliseconds, 425)
         XCTAssertEqual(reloadedStore.overlaySizeMode, .fixedPixels)
         XCTAssertEqual(reloadedStore.overlayDisplayPercentage, 65)
         XCTAssertEqual(reloadedStore.overlayFixedWidthPixels, 1320)
         XCTAssertEqual(reloadedStore.overlayFixedHeightPixels, 840)
         XCTAssertEqual(reloadedStore.promptPreviewCharacterLimit, 180)
+        XCTAssertEqual(reloadedStore.overlayFontSize, .large)
         XCTAssertEqual(reloadedStore.promptSelectionShortcutMode, .numbers)
         XCTAssertEqual(reloadedStore.promptOrderingMode, .mostUsed)
     }

@@ -116,6 +116,7 @@ struct PromptOverlayView: View {
             minWidth: CGFloat(OverlayDisplayConfiguration.minimumPercentageModeWidthPixels),
             minHeight: CGFloat(OverlayDisplayConfiguration.minimumPercentageModeHeightPixels)
         )
+        .dynamicTypeSize(settingsStore.overlayFontSize.dynamicTypeSize)
         .onAppear {
             selectedCategoryID = PromptCategoryFilter.all.id
             keepCategoryVisible()
@@ -426,6 +427,21 @@ struct PromptOverlayView: View {
 
         if outcome.shouldClose {
             close()
+        }
+    }
+}
+
+private extension OverlayFontSize {
+    var dynamicTypeSize: DynamicTypeSize {
+        switch self {
+        case .small:
+            .small
+        case .standard:
+            .medium
+        case .large:
+            .large
+        case .extraLarge:
+            .xLarge
         }
     }
 }

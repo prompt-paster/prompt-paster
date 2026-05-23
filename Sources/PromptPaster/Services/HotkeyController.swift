@@ -14,6 +14,107 @@ enum HotkeyDisplay {
     }
 }
 
+enum FallbackHotkeyPreset: String, CaseIterable, Identifiable {
+    case controlOptionSpace
+    case controlOptionP
+    case controlOptionReturn
+    case controlShiftSpace
+    case commandOptionSpace
+
+    var id: String {
+        rawValue
+    }
+
+    var shortcut: HotkeyShortcut {
+        switch self {
+        case .controlOptionSpace:
+            .controlOptionSpace
+        case .controlOptionP:
+            HotkeyShortcut(
+                keyCode: UInt32(kVK_ANSI_P),
+                modifiers: UInt32(controlKey | optionKey),
+                displayName: "Control + Option + P"
+            )
+        case .controlOptionReturn:
+            HotkeyShortcut(
+                keyCode: UInt32(kVK_Return),
+                modifiers: UInt32(controlKey | optionKey),
+                displayName: "Control + Option + Return"
+            )
+        case .controlShiftSpace:
+            HotkeyShortcut(
+                keyCode: UInt32(kVK_Space),
+                modifiers: UInt32(controlKey | shiftKey),
+                displayName: "Control + Shift + Space"
+            )
+        case .commandOptionSpace:
+            HotkeyShortcut(
+                keyCode: UInt32(kVK_Space),
+                modifiers: UInt32(cmdKey | optionKey),
+                displayName: "Command + Option + Space"
+            )
+        }
+    }
+
+    var displayName: String {
+        shortcut.displayName
+    }
+}
+
+enum DoubleTapModifier: String, CaseIterable, Identifiable {
+    case control
+    case option
+    case shift
+    case command
+
+    var id: String {
+        rawValue
+    }
+
+    var displayName: String {
+        switch self {
+        case .control:
+            "Control"
+        case .option:
+            "Option"
+        case .shift:
+            "Shift"
+        case .command:
+            "Command"
+        }
+    }
+
+    var doubleTapDisplayName: String {
+        "Double \(displayName)"
+    }
+
+    var keyCodes: Set<CGKeyCode> {
+        switch self {
+        case .control:
+            [CGKeyCode(kVK_Control), CGKeyCode(kVK_RightControl)]
+        case .option:
+            [CGKeyCode(kVK_Option), CGKeyCode(kVK_RightOption)]
+        case .shift:
+            [CGKeyCode(kVK_Shift), CGKeyCode(kVK_RightShift)]
+        case .command:
+            [CGKeyCode(kVK_Command), CGKeyCode(kVK_RightCommand)]
+        }
+    }
+
+    var eventFlag: CGEventFlags {
+        switch self {
+        case .control:
+            .maskControl
+        case .option:
+            .maskAlternate
+        case .shift:
+            .maskShift
+        case .command:
+            .maskCommand
+        }
+    }
+}
+
 struct HotkeyShortcut: Equatable {
     let keyCode: UInt32
     let modifiers: UInt32
@@ -231,7 +332,10 @@ protocol HotkeyRegistrar {
 protocol DoubleControlMonitoring: AnyObject {
     var isRunning: Bool { get }
 
-    func start(eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void) throws
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws
     func stop()
 }
 
@@ -239,6 +343,7 @@ protocol DoubleControlMonitoring: AnyObject {
 final class HotkeyController {
     private let shortcut: HotkeyShortcut
     private let triggerMode: TriggerMode
+    private let doubleTapModifier: DoubleTapModifier
     private let router: HotkeyTriggerRouter
     private let registrationState: HotkeyRegistrationState
     private let doubleControlMonitor: DoubleControlMonitoring
@@ -249,6 +354,7 @@ final class HotkeyController {
     init(
         shortcut: HotkeyShortcut = .controlOptionSpace,
         triggerMode: TriggerMode = .doubleControlWithFallback,
+        doubleTapModifier: DoubleTapModifier = .control,
         handler: HotkeyTriggerHandling,
         registrar: AnyHotkeyRegistrar = AnyHotkeyRegistrar(CarbonHotkeyRegistrar()),
         doubleControlMonitor: DoubleControlMonitoring = CGEventDoubleControlMonitor(),
@@ -257,6 +363,7 @@ final class HotkeyController {
     ) {
         self.shortcut = shortcut
         self.triggerMode = triggerMode
+        self.doubleTapModifier = doubleTapModifier
         self.router = HotkeyTriggerRouter(handler: handler)
         self.registrationState = HotkeyRegistrationState(registrar: registrar)
         self.doubleControlMonitor = doubleControlMonitor
@@ -352,7 +459,7 @@ final class HotkeyController {
         }
 
         do {
-            try doubleControlMonitor.start { [weak self] input in
+            try doubleControlMonitor.start(modifier: doubleTapModifier) { [weak self] input in
                 guard var detector = self?.doubleControlDetector else {
                     return
                 }
@@ -504,17 +611,27 @@ final class CGEventDoubleControlMonitor: DoubleControlMonitoring {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var eventHandler: (@MainActor (DoubleControlTapInput) -> Void)?
+    private var modifier: DoubleTapModifier = .control
 
     var isRunning: Bool {
         eventTap != nil
     }
 
     func start(eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void) throws {
+        try start(modifier: .control, eventHandler: eventHandler)
+    }
+
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws {
         guard eventTap == nil else {
+            self.modifier = modifier
             self.eventHandler = eventHandler
             return
         }
 
+        self.modifier = modifier
         self.eventHandler = eventHandler
 
         let eventMask = (1 << CGEventType.flagsChanged.rawValue) | (1 << CGEventType.keyDown.rawValue)
@@ -578,7 +695,8 @@ final class CGEventDoubleControlMonitor: DoubleControlMonitoring {
             for: type,
             keyCode: keyCode,
             flags: event.flags,
-            timestamp: event.timestampSeconds
+            timestamp: event.timestampSeconds,
+            modifier: modifier
         ) else {
             return
         }
@@ -591,16 +709,17 @@ enum DoubleControlEventInputMapper {
         for type: CGEventType,
         keyCode: CGKeyCode,
         flags: CGEventFlags,
-        timestamp: TimeInterval
+        timestamp: TimeInterval,
+        modifier: DoubleTapModifier = .control
     ) -> DoubleControlTapInput? {
         switch type {
         case .flagsChanged:
-            guard isControlKeyCode(keyCode) else {
+            guard modifier.keyCodes.contains(keyCode) else {
                 return .unrelatedInput(timestamp: timestamp)
             }
             return .controlChanged(
-                isPressed: flags.contains(.maskControl),
-                otherModifiersPressed: hasOtherModifier(in: flags),
+                isPressed: flags.contains(modifier.eventFlag),
+                otherModifiersPressed: hasOtherModifier(in: flags, excluding: modifier),
                 timestamp: timestamp
             )
         case .keyDown:
@@ -614,15 +733,17 @@ enum DoubleControlEventInputMapper {
         type == .tapDisabledByTimeout || type == .tapDisabledByUserInput
     }
 
-    private static func isControlKeyCode(_ keyCode: CGKeyCode) -> Bool {
-        keyCode == CGKeyCode(kVK_Control) || keyCode == CGKeyCode(kVK_RightControl)
-    }
+    private static func hasOtherModifier(in flags: CGEventFlags, excluding modifier: DoubleTapModifier) -> Bool {
+        let modifierFlags: [(DoubleTapModifier, CGEventFlags)] = [
+            (.control, .maskControl),
+            (.option, .maskAlternate),
+            (.shift, .maskShift),
+            (.command, .maskCommand)
+        ]
 
-    private static func hasOtherModifier(in flags: CGEventFlags) -> Bool {
-        flags.contains(.maskAlternate)
-            || flags.contains(.maskCommand)
-            || flags.contains(.maskShift)
-            || flags.contains(.maskSecondaryFn)
+        return modifierFlags.contains { candidate, flag in
+            candidate != modifier && flags.contains(flag)
+        } || flags.contains(.maskSecondaryFn)
     }
 }
 

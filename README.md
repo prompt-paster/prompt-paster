@@ -13,8 +13,8 @@ selection loop:
 - local prompt storage seeded into Application Support
 - a searchable overlay with keyboard and pointer selection
 - clipboard copy-and-close behavior
-- fallback `Control+Option+Space` global hotkey
-- double-Control trigger support
+- configurable fallback global hotkey, defaulting to `Control+Option+Space`
+- configurable double-modifier trigger support, defaulting to double-Control
 - settings and launch-at-login wiring
 - local `.app` and DMG release packaging
 
@@ -35,8 +35,9 @@ Run the app from the repository root:
 swift run PromptPaster
 ```
 
-The app appears in the macOS menu bar. Use the menu-bar item, fallback hotkey,
-or configured double-Control trigger to open the prompt overlay.
+The app appears in the macOS menu bar. Use the menu-bar item, configured
+fallback hotkey, or configured double-modifier trigger to open the prompt
+overlay.
 
 ## Build an App Bundle
 
@@ -191,11 +192,12 @@ the workflow fails before building if any are missing.
 1. Open the DMG.
 2. Drag `Prompt Paster.app` to `Applications`.
 3. Launch it from `Applications`.
-4. If using double-Control, grant Accessibility permission when macOS prompts or
-   from System Settings.
+4. If using the double-modifier trigger, grant Accessibility permission when
+   macOS prompts or from System Settings.
 
-The fallback `Control+Option+Space` hotkey remains available. Launch-at-login
-can be enabled from the app settings window.
+The fallback hotkey defaults to `Control+Option+Space`. The fallback hotkey,
+double-modifier trigger, and overlay font size can be changed from the app
+settings window.
 
 ## Planning Docs
 

@@ -8,6 +8,9 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(HotkeyShortcut.controlOptionSpace.keyCode, UInt32(kVK_Space))
         XCTAssertEqual(HotkeyShortcut.controlOptionSpace.modifiers, UInt32(controlKey | optionKey))
         XCTAssertEqual(HotkeyShortcut.controlOptionSpace.displayName, "Control + Option + Space")
+        XCTAssertEqual(FallbackHotkeyPreset.controlOptionP.shortcut.keyCode, UInt32(kVK_ANSI_P))
+        XCTAssertEqual(FallbackHotkeyPreset.controlOptionP.displayName, "Control + Option + P")
+        XCTAssertEqual(DoubleTapModifier.option.doubleTapDisplayName, "Double Option")
         XCTAssertEqual(HotkeyDisplay.fallbackShortcut, "Control + Option + Space")
         XCTAssertEqual(HotkeyDisplay.doubleControlShortcut, "Double Control")
         XCTAssertEqual(HotkeyDisplay.doubleControlThreshold(350), "350 ms")
@@ -40,6 +43,30 @@ final class HotkeyControllerTests: XCTestCase {
         XCTAssertEqual(registrar.registeredShortcut, .controlOptionSpace)
         XCTAssertEqual(monitor.startCount, 1)
         XCTAssertEqual(status.doubleControlStatus, .active)
+    }
+
+    func testStartUsesConfiguredFallbackShortcutAndDoubleTapModifier() throws {
+        let registrar = FakeHotkeyRegistrar()
+        let monitor = FakeDoubleControlMonitor()
+        let handler = FakeHotkeyHandler()
+        let controller = HotkeyController(
+            shortcut: FallbackHotkeyPreset.controlOptionP.shortcut,
+            doubleTapModifier: .option,
+            handler: handler,
+            registrar: AnyHotkeyRegistrar(registrar),
+            doubleControlMonitor: monitor,
+            accessibilityPermissionChecker: FakeAccessibilityPermissionChecker(isAccessibilityTrusted: true)
+        )
+
+        try controller.start()
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.0))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.05))
+        monitor.send(.controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 1.20))
+        monitor.send(.controlChanged(isPressed: false, otherModifiersPressed: false, timestamp: 1.25))
+
+        XCTAssertEqual(registrar.registeredShortcut, FallbackHotkeyPreset.controlOptionP.shortcut)
+        XCTAssertEqual(monitor.startedModifiers, [.option])
+        XCTAssertEqual(handler.triggerCount, 1)
     }
 
     func testFallbackOnlyModeRegistersHotkeyWithoutStartingDoubleControlMonitor() throws {
@@ -323,6 +350,39 @@ final class HotkeyControllerTests: XCTestCase {
         )
     }
 
+    func testDoubleControlEventMapperSupportsConfiguredModifiers() {
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: .flagsChanged,
+                keyCode: CGKeyCode(kVK_Option),
+                flags: .maskAlternate,
+                timestamp: 6.0,
+                modifier: .option
+            ),
+            .controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 6.0)
+        )
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: .flagsChanged,
+                keyCode: CGKeyCode(kVK_Control),
+                flags: .maskControl,
+                timestamp: 6.1,
+                modifier: .option
+            ),
+            .unrelatedInput(timestamp: 6.1)
+        )
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: .flagsChanged,
+                keyCode: CGKeyCode(kVK_Option),
+                flags: [.maskAlternate, .maskControl],
+                timestamp: 6.2,
+                modifier: .option
+            ),
+            .controlChanged(isPressed: true, otherModifiersPressed: true, timestamp: 6.2)
+        )
+    }
+
     func testDoubleControlEventMapperTreatsNonControlModifierAndKeyDownAsInterruptions() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(
@@ -422,6 +482,7 @@ private final class FakeHotkeyRegistrar: HotkeyRegistrar {
 private final class FakeDoubleControlMonitor: DoubleControlMonitoring {
     var startCount = 0
     var stopCount = 0
+    var startedModifiers: [DoubleTapModifier] = []
     var startError: Error?
     private var eventHandler: (@MainActor (DoubleControlTapInput) -> Void)?
 
@@ -433,8 +494,12 @@ private final class FakeDoubleControlMonitor: DoubleControlMonitoring {
         self.startError = startError
     }
 
-    func start(eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void) throws {
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws {
         startCount += 1
+        startedModifiers.append(modifier)
         if let startError {
             throw startError
         }
