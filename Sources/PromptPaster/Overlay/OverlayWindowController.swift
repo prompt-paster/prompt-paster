@@ -7,17 +7,20 @@ final class OverlayWindowController {
     private var previouslyActiveApplication: NSRunningApplication?
     private let promptStore: PromptStore
     private let settingsStore: SettingsStore
+    private let promptUsageStore: PromptUsageStore
     private let clipboard: ClipboardCopying
     private let openSettings: () -> Void
 
     init(
         promptStore: PromptStore,
         settingsStore: SettingsStore,
+        promptUsageStore: PromptUsageStore,
         clipboard: ClipboardCopying = ClipboardService(),
         openSettings: @escaping () -> Void = {}
     ) {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
+        self.promptUsageStore = promptUsageStore
         self.clipboard = clipboard
         self.openSettings = openSettings
     }
@@ -54,6 +57,7 @@ final class OverlayWindowController {
             rootView: PromptOverlayView(
                 promptStore: promptStore,
                 settingsStore: settingsStore,
+                promptUsageStore: promptUsageStore,
                 message: message,
                 clipboard: clipboard,
                 openSettings: { [weak self] in

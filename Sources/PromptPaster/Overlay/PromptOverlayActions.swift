@@ -9,9 +9,14 @@ struct PromptOverlaySelectionOutcome: Equatable {
 @MainActor
 struct PromptOverlayActions {
     private let clipboard: ClipboardCopying
+    private let recordPromptCopy: (Prompt.ID) -> Void
 
-    init(clipboard: ClipboardCopying) {
+    init(
+        clipboard: ClipboardCopying,
+        recordPromptCopy: @escaping (Prompt.ID) -> Void = { _ in }
+    ) {
         self.clipboard = clipboard
+        self.recordPromptCopy = recordPromptCopy
     }
 
     func selectPrompt(at index: Int, visiblePrompts: [Prompt]) -> PromptOverlaySelectionOutcome? {
@@ -38,6 +43,7 @@ struct PromptOverlayActions {
     private func copy(_ prompt: Prompt) -> PromptOverlaySelectionOutcome {
         do {
             try clipboard.copyPlainText(prompt.body)
+            recordPromptCopy(prompt.id)
             return PromptOverlaySelectionOutcome(
                 selectedPromptID: prompt.id,
                 shouldClose: true,

@@ -41,9 +41,71 @@ struct PromptOverlayState {
     static func visiblePrompts(
         prompts: [Prompt],
         query: String,
-        selectedCategoryID: String
+        selectedCategoryID: String,
+        orderingMode: PromptOrderingMode = .libraryOrder,
+        usageStats: [Prompt.ID: PromptUsageStats] = [:]
     ) -> [Prompt] {
-        PromptSearch.filteredPrompts(prompts, query: query, categoryID: selectedCategoryID)
+        let filteredPrompts = PromptSearch.filteredPrompts(
+            prompts,
+            query: query,
+            categoryID: selectedCategoryID
+        )
+        return orderedPrompts(
+            filteredPrompts,
+            query: query,
+            orderingMode: orderingMode,
+            usageStats: usageStats
+        )
+    }
+
+    static func orderedPrompts(
+        _ prompts: [Prompt],
+        query: String = "",
+        orderingMode: PromptOrderingMode,
+        usageStats: [Prompt.ID: PromptUsageStats]
+    ) -> [Prompt] {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard orderingMode != .libraryOrder || !normalizedQuery.isEmpty else {
+            return prompts
+        }
+
+        let libraryIndexesByID = Dictionary(
+            uniqueKeysWithValues: prompts.enumerated().map { ($0.element.id, $0.offset) }
+        )
+
+        return prompts.sorted { lhs, rhs in
+            if !normalizedQuery.isEmpty {
+                let lhsRelevance = PromptSearch.searchRelevanceRank(for: lhs, query: normalizedQuery) ?? Int.max
+                let rhsRelevance = PromptSearch.searchRelevanceRank(for: rhs, query: normalizedQuery) ?? Int.max
+                if lhsRelevance != rhsRelevance {
+                    return lhsRelevance < rhsRelevance
+                }
+            }
+
+            let lhsStats = usageStats[lhs.id] ?? .empty
+            let rhsStats = usageStats[rhs.id] ?? .empty
+
+            switch orderingMode {
+            case .libraryOrder:
+                break
+            case .mostUsed:
+                if lhsStats.copyCount != rhsStats.copyCount {
+                    return lhsStats.copyCount > rhsStats.copyCount
+                }
+                if lhsStats.lastCopiedAt != rhsStats.lastCopiedAt {
+                    return moreRecent(lhsStats.lastCopiedAt, than: rhsStats.lastCopiedAt)
+                }
+            case .recentlyUsed:
+                if lhsStats.lastCopiedAt != rhsStats.lastCopiedAt {
+                    return moreRecent(lhsStats.lastCopiedAt, than: rhsStats.lastCopiedAt)
+                }
+                if lhsStats.copyCount != rhsStats.copyCount {
+                    return lhsStats.copyCount > rhsStats.copyCount
+                }
+            }
+
+            return (libraryIndexesByID[lhs.id] ?? 0) < (libraryIndexesByID[rhs.id] ?? 0)
+        }
     }
 
     static func statusMessages(
@@ -432,6 +494,19 @@ struct PromptOverlayState {
             150
         case (false, false):
             126
+        }
+    }
+
+    private static func moreRecent(_ lhs: Date?, than rhs: Date?) -> Bool {
+        switch (lhs, rhs) {
+        case let (lhs?, rhs?):
+            return lhs > rhs
+        case (_?, nil):
+            return true
+        case (nil, _?):
+            return false
+        case (nil, nil):
+            return false
         }
     }
 }

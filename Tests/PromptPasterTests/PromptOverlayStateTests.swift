@@ -126,6 +126,145 @@ final class PromptOverlayStateTests: XCTestCase {
         )
     }
 
+    func testVisiblePromptsPreserveLibraryOrderByDefaultAfterFiltering() {
+        XCTAssertEqual(
+            PromptOverlayState.visiblePrompts(
+                prompts: prompts,
+                query: "",
+                selectedCategoryID: PromptCategoryFilter.all.id,
+                orderingMode: .libraryOrder,
+                usageStats: [
+                    "third": PromptUsageStats(
+                        copyCount: 10,
+                        lastCopiedAt: Date(timeIntervalSince1970: 300)
+                    )
+                ]
+            ).map(\.id),
+            ["first", "second", "third"]
+        )
+    }
+
+    func testLibraryOrderUsesLibraryOrderAsSearchTieBreaker() {
+        let searchPrompts = [
+            Prompt(id: "first-body", title: "Alpha", category: nil, body: "common body match"),
+            Prompt(id: "second-body", title: "Beta", category: nil, body: "common body match"),
+            Prompt(id: "third-body", title: "Gamma", category: nil, body: "common body match")
+        ]
+
+        XCTAssertEqual(
+            PromptOverlayState.visiblePrompts(
+                prompts: searchPrompts,
+                query: "common",
+                selectedCategoryID: PromptCategoryFilter.all.id,
+                orderingMode: .libraryOrder,
+                usageStats: [
+                    "third-body": PromptUsageStats(
+                        copyCount: 10,
+                        lastCopiedAt: Date(timeIntervalSince1970: 300)
+                    )
+                ]
+            ).map(\.id),
+            ["first-body", "second-body", "third-body"]
+        )
+    }
+
+    func testVisiblePromptsSortByMostUsedWithinSearchAndCategoryFilter() {
+        let docsCategoryID = PromptSearch.categories(for: prompts).first { $0.title == "Docs" }?.id ?? ""
+
+        XCTAssertEqual(
+            PromptOverlayState.visiblePrompts(
+                prompts: prompts,
+                query: "body",
+                selectedCategoryID: docsCategoryID,
+                orderingMode: .mostUsed,
+                usageStats: [
+                    "second": PromptUsageStats(
+                        copyCount: 1,
+                        lastCopiedAt: Date(timeIntervalSince1970: 300)
+                    ),
+                    "third": PromptUsageStats(
+                        copyCount: 4,
+                        lastCopiedAt: Date(timeIntervalSince1970: 200)
+                    )
+                ]
+            ).map(\.id),
+            ["third", "second"]
+        )
+    }
+
+    func testSearchRelevanceOutranksUsageOrderingWhenQueryIsActive() {
+        let searchPrompts = [
+            Prompt(
+                id: "title-match",
+                title: "Merge summary",
+                category: "PR",
+                body: "Short body"
+            ),
+            Prompt(
+                id: "body-match",
+                title: "Daily handoff",
+                category: "Ops",
+                body: "This heavily used prompt mentions merge only in the body."
+            )
+        ]
+
+        XCTAssertEqual(
+            PromptOverlayState.visiblePrompts(
+                prompts: searchPrompts,
+                query: "merge",
+                selectedCategoryID: PromptCategoryFilter.all.id,
+                orderingMode: .mostUsed,
+                usageStats: [
+                    "body-match": PromptUsageStats(
+                        copyCount: 100,
+                        lastCopiedAt: Date(timeIntervalSince1970: 300)
+                    )
+                ]
+            ).map(\.id),
+            ["title-match", "body-match"]
+        )
+    }
+
+    func testMostUsedOrderingUsesRecencyThenLibraryOrderAsTieBreakers() {
+        XCTAssertEqual(
+            PromptOverlayState.orderedPrompts(
+                prompts,
+                orderingMode: .mostUsed,
+                usageStats: [
+                    "second": PromptUsageStats(
+                        copyCount: 2,
+                        lastCopiedAt: Date(timeIntervalSince1970: 100)
+                    ),
+                    "third": PromptUsageStats(
+                        copyCount: 2,
+                        lastCopiedAt: Date(timeIntervalSince1970: 200)
+                    )
+                ]
+            ).map(\.id),
+            ["third", "second", "first"]
+        )
+    }
+
+    func testRecentlyUsedOrderingUsesCopyCountThenLibraryOrderAsTieBreakers() {
+        let sharedDate = Date(timeIntervalSince1970: 200)
+
+        XCTAssertEqual(
+            PromptOverlayState.orderedPrompts(
+                prompts,
+                orderingMode: .recentlyUsed,
+                usageStats: [
+                    "first": PromptUsageStats(copyCount: 5, lastCopiedAt: sharedDate),
+                    "second": PromptUsageStats(copyCount: 1, lastCopiedAt: sharedDate),
+                    "third": PromptUsageStats(
+                        copyCount: 10,
+                        lastCopiedAt: Date(timeIntervalSince1970: 100)
+                    )
+                ]
+            ).map(\.id),
+            ["first", "second", "third"]
+        )
+    }
+
     func testPreviewTextTruncatesToConfiguredCharacterLimit() {
         let body = "1234567890abcdef"
 

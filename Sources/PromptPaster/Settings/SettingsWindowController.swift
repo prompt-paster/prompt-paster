@@ -6,6 +6,7 @@ final class SettingsWindowController {
     private var window: NSWindow?
     private let promptStore: PromptStore
     private let settingsStore: SettingsStore
+    private let promptUsageStore: PromptUsageStore
     private let triggerModeChanged: () -> Void
     private let doubleControlTimingChanged: () -> Void
     private let openAccessibilitySettings: () -> Void
@@ -24,6 +25,7 @@ final class SettingsWindowController {
     init(
         promptStore: PromptStore,
         settingsStore: SettingsStore,
+        promptUsageStore: PromptUsageStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
         triggerModeChanged: @escaping () -> Void = {},
@@ -33,6 +35,7 @@ final class SettingsWindowController {
     ) {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
+        self.promptUsageStore = promptUsageStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
         self.triggerModeChanged = triggerModeChanged
@@ -56,7 +59,7 @@ final class SettingsWindowController {
 
     private func makeWindow() -> NSWindow {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 680),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -75,6 +78,7 @@ final class SettingsWindowController {
         SettingsView(
             promptStore: promptStore,
             settingsStore: settingsStore,
+            promptUsageStore: promptUsageStore,
             fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
             doubleControlStatus: doubleControlStatus,
             triggerModeChanged: triggerModeChanged,

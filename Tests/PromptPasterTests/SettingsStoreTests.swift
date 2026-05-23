@@ -18,6 +18,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.overlayFixedHeightPixels, 720)
         XCTAssertEqual(store.promptPreviewCharacterLimit, 260)
         XCTAssertEqual(store.promptSelectionShortcutMode, .spatialLetters)
+        XCTAssertEqual(store.promptOrderingMode, .libraryOrder)
+        XCTAssertEqual(store.promptOrderingOverridesByCategoryID, [:])
         XCTAssertEqual(store.launchAtLoginStatus, .disabled)
     }
 
@@ -33,6 +35,7 @@ final class SettingsStoreTests: XCTestCase {
         store.setOverlayFixedHeightPixels(840)
         store.setPromptPreviewCharacterLimit(180)
         store.promptSelectionShortcutMode = .numbers
+        store.promptOrderingMode = .mostUsed
 
         let reloadedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
         XCTAssertEqual(reloadedStore.triggerMode, .fallbackHotkeyOnly)
@@ -43,6 +46,34 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.overlayFixedHeightPixels, 840)
         XCTAssertEqual(reloadedStore.promptPreviewCharacterLimit, 180)
         XCTAssertEqual(reloadedStore.promptSelectionShortcutMode, .numbers)
+        XCTAssertEqual(reloadedStore.promptOrderingMode, .mostUsed)
+    }
+
+    func testPersistsPerCategoryOrderingOverrides() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
+
+        store.promptOrderingMode = .mostUsed
+        store.setPromptOrderingOverride(.recentlyUsed, for: "docs")
+        store.setPromptOrderingOverride(.libraryOrder, for: "pr")
+
+        let reloadedStore = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
+        XCTAssertEqual(reloadedStore.promptOrderingMode(for: PromptCategoryFilter.all.id), .mostUsed)
+        XCTAssertEqual(reloadedStore.promptOrderingMode(for: "docs"), .recentlyUsed)
+        XCTAssertEqual(reloadedStore.promptOrderingMode(for: "pr"), .libraryOrder)
+        XCTAssertEqual(reloadedStore.promptOrderingOverride(for: "docs"), .recentlyUsed)
+    }
+
+    func testRemovingCategoryOrderingOverrideFallsBackToGlobalMode() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults, loginItemManager: FakeLoginItemManager())
+
+        store.promptOrderingMode = .recentlyUsed
+        store.setPromptOrderingOverride(.libraryOrder, for: "docs")
+        store.setPromptOrderingOverride(nil, for: "docs")
+
+        XCTAssertNil(store.promptOrderingOverride(for: "docs"))
+        XCTAssertEqual(store.promptOrderingMode(for: "docs"), .recentlyUsed)
     }
 
     func testClampsPersistedThresholdIntoSupportedRange() {

@@ -11,11 +11,16 @@ final class PromptOverlayActionsTests: XCTestCase {
 
     func testSelectPromptAtVisibleIndexCopiesPromptBodyAndCloses() {
         let clipboard = FakeClipboard()
-        let actions = PromptOverlayActions(clipboard: clipboard)
+        var recordedPromptIDs: [Prompt.ID] = []
+        let actions = PromptOverlayActions(
+            clipboard: clipboard,
+            recordPromptCopy: { recordedPromptIDs.append($0) }
+        )
 
         let outcome = actions.selectPrompt(at: 1, visiblePrompts: prompts)
 
         XCTAssertEqual(clipboard.copiedTexts, ["Second body"])
+        XCTAssertEqual(recordedPromptIDs, ["second"])
         XCTAssertEqual(outcome, PromptOverlaySelectionOutcome(
             selectedPromptID: "second",
             shouldClose: true,
@@ -62,11 +67,16 @@ final class PromptOverlayActionsTests: XCTestCase {
 
     func testCopyFailureKeepsOverlayOpenWithStatusMessage() {
         let clipboard = FakeClipboard(error: ClipboardServiceError.writeFailed)
-        let actions = PromptOverlayActions(clipboard: clipboard)
+        var recordedPromptIDs: [Prompt.ID] = []
+        let actions = PromptOverlayActions(
+            clipboard: clipboard,
+            recordPromptCopy: { recordedPromptIDs.append($0) }
+        )
 
         let outcome = actions.selectPrompt(at: 0, visiblePrompts: prompts)
 
         XCTAssertEqual(clipboard.copiedTexts, ["First body"])
+        XCTAssertEqual(recordedPromptIDs, [])
         XCTAssertEqual(outcome, PromptOverlaySelectionOutcome(
             selectedPromptID: "first",
             shouldClose: false,

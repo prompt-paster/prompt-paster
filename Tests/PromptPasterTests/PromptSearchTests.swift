@@ -71,4 +71,11 @@ final class PromptSearchTests: XCTestCase {
             ["merge-check", "handoff", "docs-intro"]
         )
     }
+
+    func testSearchRelevanceRanksTitleBeforeMetadataBeforeBody() {
+        XCTAssertEqual(PromptSearch.searchRelevanceRank(for: prompts[0], query: "merge"), 0)
+        XCTAssertEqual(PromptSearch.searchRelevanceRank(for: prompts[0], query: "pr"), 2)
+        XCTAssertEqual(PromptSearch.searchRelevanceRank(for: prompts[1], query: "validation"), 3)
+        XCTAssertNil(PromptSearch.searchRelevanceRank(for: prompts[2], query: "missing"))
+    }
 }

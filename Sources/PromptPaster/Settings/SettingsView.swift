@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
     @ObservedObject var settingsStore: SettingsStore
+    @ObservedObject var promptUsageStore: PromptUsageStore
     let fallbackHotkeyStatusMessage: String?
     let doubleControlStatus: DoubleControlTriggerStatus
     let triggerModeChanged: () -> Void
@@ -14,6 +15,7 @@ struct SettingsView: View {
     init(
         promptStore: PromptStore,
         settingsStore: SettingsStore,
+        promptUsageStore: PromptUsageStore,
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
         triggerModeChanged: @escaping () -> Void = {},
@@ -23,6 +25,7 @@ struct SettingsView: View {
     ) {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
+        self.promptUsageStore = promptUsageStore
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
         self.triggerModeChanged = triggerModeChanged
@@ -165,6 +168,46 @@ struct SettingsView: View {
                         Text(mode.displayName).tag(mode)
                     }
                 }
+
+                Picker("Prompt order", selection: $settingsStore.promptOrderingMode) {
+                    ForEach(PromptOrderingMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+
+                Text("Usage-based order is local to this Mac and updates only after successful copies.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if let usageErrorMessage = promptUsageStore.lastErrorMessage {
+                    Text(usageErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+
+                ForEach(categoriesForOrdering) { category in
+                    Picker(
+                        "\(category.title) order",
+                        selection: Binding(
+                            get: {
+                                settingsStore.promptOrderingOverride(for: category.id)?.rawValue
+                                    ?? CategoryOrderingSelection.useGlobal.rawValue
+                            },
+                            set: { rawValue in
+                                if rawValue == CategoryOrderingSelection.useGlobal.rawValue {
+                                    settingsStore.setPromptOrderingOverride(nil, for: category.id)
+                                } else if let mode = PromptOrderingMode(rawValue: rawValue) {
+                                    settingsStore.setPromptOrderingOverride(mode, for: category.id)
+                                }
+                            }
+                        )
+                    ) {
+                        Text(CategoryOrderingSelection.useGlobal.displayName).tag(CategoryOrderingSelection.useGlobal.rawValue)
+                        ForEach(PromptOrderingMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode.rawValue)
+                        }
+                    }
+                }
             }
 
             Section("Prompt Library") {
@@ -235,7 +278,26 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(minWidth: 540, minHeight: 560)
+        .frame(minWidth: 620, minHeight: 680)
+    }
+}
+
+private extension SettingsView {
+    var categoriesForOrdering: [PromptCategoryFilter] {
+        PromptSearch.categories(for: promptStore.library?.prompts ?? [])
+            .filter { $0.id != PromptCategoryFilter.all.id }
+    }
+}
+
+private enum CategoryOrderingSelection {
+    case useGlobal
+
+    var rawValue: String {
+        "__global__"
+    }
+
+    var displayName: String {
+        "Use global order"
     }
 }
 

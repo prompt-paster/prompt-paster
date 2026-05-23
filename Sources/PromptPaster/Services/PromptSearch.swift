@@ -47,8 +47,17 @@ struct PromptSearch {
                 return true
             }
 
-            return searchableText(for: prompt).contains(normalizedQuery)
+            return searchRelevanceRank(for: prompt, normalizedQuery: normalizedQuery) != nil
         }
+    }
+
+    static func searchRelevanceRank(for prompt: Prompt, query: String) -> Int? {
+        let normalizedQuery = normalize(query)
+        guard !normalizedQuery.isEmpty else {
+            return 0
+        }
+
+        return searchRelevanceRank(for: prompt, normalizedQuery: normalizedQuery)
     }
 
     private static func searchableText(for prompt: Prompt) -> String {
@@ -60,6 +69,34 @@ struct PromptSearch {
                 prompt.body
             ].joined(separator: " ")
         )
+    }
+
+    private static func searchRelevanceRank(
+        for prompt: Prompt,
+        normalizedQuery: String
+    ) -> Int? {
+        let normalizedTitle = normalize(prompt.title)
+        if normalizedTitle.hasPrefix(normalizedQuery) {
+            return 0
+        }
+
+        if normalizedTitle.contains(normalizedQuery) {
+            return 1
+        }
+
+        let normalizedCategory = normalize(prompt.category ?? "")
+        let normalizedTags = prompt.tags.map { normalize($0) }
+        if normalizedCategory.contains(normalizedQuery)
+            || normalizedTags.contains(where: { $0.contains(normalizedQuery) }) {
+            return 2
+        }
+
+        let normalizedBody = normalize(prompt.body)
+        if normalizedBody.contains(normalizedQuery) {
+            return 3
+        }
+
+        return searchableText(for: prompt).contains(normalizedQuery) ? 4 : nil
     }
 
     private static func normalize(_ value: String) -> String {

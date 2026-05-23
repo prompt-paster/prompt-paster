@@ -89,6 +89,10 @@ Default user library path:
 - Trigger mode, double-Control timing, launch-at-login state, overlay display
   sizing, prompt preview character limits, and prompt selection shortcut mode
   are managed by `SettingsStore`.
+- Prompt ordering mode and per-category ordering overrides are managed by
+  `SettingsStore`. Local usage stats are managed by `PromptUsageStore`,
+  persisted in user defaults by prompt ID, pruned against the loaded library,
+  and kept out of `prompts.json` and bundled seed JSON.
 - Keyboard event bridge: `Sources/PromptPaster/Overlay/OverlayKeyCaptureView.swift`
 - Current overlay scope: browse prompts as adaptive rectangular cards, search,
   filter, navigate, copy selected prompts, close after successful copy, and keep
@@ -99,6 +103,12 @@ Default user library path:
 - Prompt selection shortcuts default to spatial center-keyboard letters assigned
   from the visible card layout. The Settings window can switch badges and key
   handling back to numeric `1`-`9` mode.
+- Prompt ordering is configurable globally and per category from Settings:
+  library order keeps the loaded prompt sequence, most-used sorts by copy
+  count, and recently-used sorts by last successful copy. Search and category
+  filters narrow the result set first; non-empty searches keep search relevance
+  ahead of usage ranking, and the selected ordering mode then sorts within the
+  relevance group with library order as the stable tie-breaker.
 
 ## Configuration and Packaging
 

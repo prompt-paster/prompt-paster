@@ -6,11 +6,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
     private let settingsStore = SettingsStore()
+    private let promptUsageStore = PromptUsageStore()
     private var fallbackHotkeyStatusMessage: String?
     private var doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility
     private lazy var overlayController = OverlayWindowController(
         promptStore: promptStore,
         settingsStore: settingsStore,
+        promptUsageStore: promptUsageStore,
         openSettings: { [weak self] in
             self?.openSettings()
         }
@@ -18,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private lazy var settingsController = SettingsWindowController(
         promptStore: promptStore,
         settingsStore: settingsStore,
+        promptUsageStore: promptUsageStore,
         fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
         doubleControlStatus: doubleControlStatus,
         triggerModeChanged: { [weak self] in
@@ -39,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         NSApp.setActivationPolicy(.accessory)
         NSApp.mainMenu = MainMenuBuilder.build(quitTarget: self, quitAction: #selector(quit))
         promptStore.load()
+        prunePromptUsageStats()
         configureStatusItem()
         startHotkeys()
     }
@@ -129,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
             overlayController.show(message: "Reload failed. Keeping last valid library. \(errorMessage)")
         } else {
             let promptCount = result.library?.prompts.count ?? 0
+            prunePromptUsageStats()
             overlayController.show(message: "Reloaded \(promptCount) prompts.")
         }
     }
@@ -175,5 +180,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private func applyHotkeyStatus(_ status: HotkeyStartupStatus) {
         fallbackHotkeyStatusMessage = status.fallbackHotkeyStatusMessage
         doubleControlStatus = status.doubleControlStatus
+    }
+
+    private func prunePromptUsageStats() {
+        let promptIDs = Set(promptStore.library?.prompts.map(\.id) ?? [])
+        promptUsageStore.pruneKeepingPromptIDs(promptIDs)
     }
 }
