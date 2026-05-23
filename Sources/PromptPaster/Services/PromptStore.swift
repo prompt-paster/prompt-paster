@@ -134,7 +134,8 @@ final class PromptStore: ObservableObject {
     }
 
     nonisolated static var bundledSeedURL: URL? {
-        Bundle.module.url(forResource: "SeedPrompts", withExtension: "json")
+        Bundle.main.url(forResource: "SeedPrompts", withExtension: "json")
+            ?? Bundle.module.url(forResource: "SeedPrompts", withExtension: "json")
     }
 }
 

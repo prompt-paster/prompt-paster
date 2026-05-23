@@ -95,7 +95,8 @@ To validate an existing artifact:
 scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg
 ```
 
-To also launch the app from the mounted artifact and then terminate it:
+To also launch an installed-style copy of the app from the artifact and then
+terminate it:
 
 ```bash
 scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg --launch-smoke
@@ -108,6 +109,9 @@ Local validation does not require Apple Developer credentials. By default,
 validates the generated DMG structure plus the app signature. Ad-hoc signed
 builds are still unsigned alpha builds from Gatekeeper's perspective, but they
 must not ship with a broken bundle signature that macOS reports as damaged.
+The release validator also confirms the packaged app can find its bundled
+SwiftPM resources after being copied out of the mounted DMG, matching the
+normal drag-to-Applications install path.
 
 For a signed release, provide a Developer ID Application identity:
 

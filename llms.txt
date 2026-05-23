@@ -148,8 +148,9 @@ Default user library path:
 - Local DMG builder: `scripts/build-dmg.sh`
 - Icon regeneration helper: `scripts/generate-app-icon.sh`
 - Menu-bar icon preview helper: `scripts/generate-status-icon-preview.sh`
-- DMG structure, bundle-signature, optional notarization, and optional launch
-  validator: `scripts/validate-release-package.sh`
+- DMG structure, bundle-signature, installed seed-resource placement, optional
+  notarization, and installed-style launch validator:
+  `scripts/validate-release-package.sh`
 - GitHub release workflow behavior: manual dispatch or `v*` tags build the DMG
   on macOS, optionally import a Developer ID Application certificate from
   secrets, optionally notarize, upload the DMG artifact, and create/update the

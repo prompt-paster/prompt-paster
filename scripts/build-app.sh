@@ -21,6 +21,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$ROOT_DIR/Packaging/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$BUILD_DIR/$PRODUCT_NAME" "$MACOS_DIR/$PRODUCT_NAME"
 cp "$ICON_PATH" "$RESOURCES_DIR/PromptPaster.icns"
+cp "$ROOT_DIR/Sources/PromptPaster/Resources/SeedPrompts.json" "$RESOURCES_DIR/SeedPrompts.json"
 RESOURCE_BUNDLE="$BUILD_DIR/${PRODUCT_NAME}_${PRODUCT_NAME}.bundle"
 if [ ! -d "$RESOURCE_BUNDLE" ]; then
     echo "Missing SwiftPM resource bundle: $RESOURCE_BUNDLE" >&2

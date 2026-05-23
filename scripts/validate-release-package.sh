@@ -37,11 +37,15 @@ TMP_BASE="${TMPDIR:-/tmp}"
 TMP_BASE="${TMP_BASE%/}"
 MOUNT_DIR="$(mktemp -d "$TMP_BASE/prompt-paster-dmg.XXXXXX")"
 QUARANTINE_CHECK_DIR=""
+INSTALLED_SMOKE_DIR=""
 ATTACHED=0
 
 cleanup() {
     if [ -n "$QUARANTINE_CHECK_DIR" ]; then
         rm -rf "$QUARANTINE_CHECK_DIR"
+    fi
+    if [ -n "$INSTALLED_SMOKE_DIR" ]; then
+        rm -rf "$INSTALLED_SMOKE_DIR"
     fi
     if [ "$ATTACHED" -eq 1 ]; then
         for _ in {1..5}; do
@@ -68,12 +72,15 @@ APP_DIR="$MOUNT_DIR/$APP_NAME"
 INFO_PLIST="$APP_DIR/Contents/Info.plist"
 EXECUTABLE="$APP_DIR/Contents/MacOS/$EXECUTABLE_NAME"
 RESOURCES_DIR="$APP_DIR/Contents/Resources"
+RESOURCE_BUNDLE_NAME="${EXECUTABLE_NAME}_${EXECUTABLE_NAME}.bundle"
 
 test -d "$APP_DIR"
 test -f "$INFO_PLIST"
 test -x "$EXECUTABLE"
 test -f "$RESOURCES_DIR/PromptPaster.icns"
-test -d "$RESOURCES_DIR/PromptPaster_PromptPaster.bundle"
+test -f "$RESOURCES_DIR/SeedPrompts.json"
+test -d "$RESOURCES_DIR/$RESOURCE_BUNDLE_NAME"
+test -f "$RESOURCES_DIR/$RESOURCE_BUNDLE_NAME/SeedPrompts.json"
 test -L "$MOUNT_DIR/Applications"
 test -f "$MOUNT_DIR/README.txt"
 
@@ -93,7 +100,11 @@ if [ "$EXPECT_NOTARIZED" -eq 1 ]; then
 fi
 
 if [ "$LAUNCH_SMOKE" -eq 1 ]; then
-    EXECUTABLE_REAL="$(cd "$(dirname "$EXECUTABLE")" && pwd -P)/$EXECUTABLE_NAME"
+    INSTALLED_SMOKE_DIR="$(mktemp -d "$TMP_BASE/prompt-paster-installed-smoke.XXXXXX")"
+    cp -R "$APP_DIR" "$INSTALLED_SMOKE_DIR/"
+    SMOKE_APP_DIR="$INSTALLED_SMOKE_DIR/$APP_NAME"
+    SMOKE_EXECUTABLE="$SMOKE_APP_DIR/Contents/MacOS/$EXECUTABLE_NAME"
+    EXECUTABLE_REAL="$(cd "$(dirname "$SMOKE_EXECUTABLE")" && pwd -P)/$EXECUTABLE_NAME"
 
     find_mounted_app_pid() {
         local pid
@@ -112,13 +123,13 @@ if [ "$LAUNCH_SMOKE" -eq 1 ]; then
         return 1
     }
 
-    open -n "$APP_DIR"
+    open -n "$SMOKE_APP_DIR"
     launched_pid=""
     launched=0
     for _ in {1..20}; do
         if launched_pid="$(find_mounted_app_pid)"; then
             kill "$launched_pid"
-            echo "Launch smoke passed for $APP_DIR"
+            echo "Launch smoke passed for installed-style copy at $SMOKE_APP_DIR"
             launched=1
             break
         fi
@@ -140,6 +151,9 @@ if [ "$LAUNCH_SMOKE" -eq 1 ]; then
         echo "Launch smoke failed: $EXECUTABLE_NAME did not start." >&2
         exit 1
     fi
+
+    rm -rf "$INSTALLED_SMOKE_DIR"
+    INSTALLED_SMOKE_DIR=""
 fi
 
 echo "Validated $DMG_PATH"

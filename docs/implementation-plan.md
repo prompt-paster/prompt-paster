@@ -659,8 +659,12 @@ Tasks:
 - Build the release DMG through `scripts/build-dmg.sh`; unsigned alpha builds
   must ad-hoc sign the final `.app` bundle so macOS does not inherit a stale
   linker signature and report the app as damaged after browser download.
+- Copy `SeedPrompts.json` into standard app resources and prefer
+  `Bundle.main` for installed runtime seed loading, because SwiftPM's generated
+  `Bundle.module` accessor can otherwise look outside the installed `.app`.
 - Validate the DMG, including app bundle code-signature verification and launch
-  smoke, through `scripts/validate-release-package.sh`.
+  smoke from an installed-style copied app, through
+  `scripts/validate-release-package.sh`.
 - For manually dispatched release reruns, force-update the requested release
   tag to the validated workflow commit before uploading assets.
 - Upload the DMG as a workflow artifact.
@@ -685,8 +689,8 @@ Validation:
 
 - Manual workflow dispatch can publish `v1alpha`.
 - The release page contains the generated DMG.
-- Unsigned alpha releases work without Apple secrets and pass bundle-signature
-  validation from the mounted DMG.
+- Unsigned alpha releases work without Apple secrets, pass bundle-signature
+  validation from the mounted DMG, and launch from an installed-style app copy.
 - Notarized releases fail before building when required Apple secrets are
   missing.
 

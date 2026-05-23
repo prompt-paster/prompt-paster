@@ -101,10 +101,21 @@ final class PackagingMetadataTests: XCTestCase {
             contentsOf: root.appendingPathComponent("scripts").appendingPathComponent("validate-release-package.sh"),
             encoding: .utf8
         )
+        let buildApp = try String(
+            contentsOf: root.appendingPathComponent("scripts").appendingPathComponent("build-app.sh"),
+            encoding: .utf8
+        )
 
+        XCTAssertTrue(buildApp.contains("cp \"$ROOT_DIR/Sources/PromptPaster/Resources/SeedPrompts.json\" \"$RESOURCES_DIR/SeedPrompts.json\""))
+        XCTAssertTrue(buildApp.contains("cp -R \"$RESOURCE_BUNDLE\" \"$RESOURCES_DIR/\""))
         XCTAssertTrue(buildDMG.contains("applying an ad-hoc signature"))
         XCTAssertTrue(buildDMG.contains("--sign -"))
         XCTAssertTrue(buildDMG.contains("codesign --verify --strict --deep --verbose=2 \"$APP_DIR\""))
+        XCTAssertTrue(validator.contains("RESOURCE_BUNDLE_NAME=\"${EXECUTABLE_NAME}_${EXECUTABLE_NAME}.bundle\""))
+        XCTAssertTrue(validator.contains("test -f \"$RESOURCES_DIR/SeedPrompts.json\""))
+        XCTAssertTrue(validator.contains("test -d \"$RESOURCES_DIR/$RESOURCE_BUNDLE_NAME\""))
+        XCTAssertTrue(validator.contains("INSTALLED_SMOKE_DIR=\"$(mktemp -d \"$TMP_BASE/prompt-paster-installed-smoke.XXXXXX\")\""))
+        XCTAssertTrue(validator.contains("open -n \"$SMOKE_APP_DIR\""))
         XCTAssertTrue(validator.contains("codesign --verify --strict --deep --verbose=2 \"$APP_DIR\""))
         XCTAssertTrue(validator.contains("com.apple.quarantine"))
         XCTAssertTrue(validator.contains("PromptPasterReleaseValidator"))
