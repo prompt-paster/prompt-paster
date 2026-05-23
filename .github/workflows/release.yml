@@ -188,6 +188,10 @@ jobs:
               --notes-file "$release_notes" \
               "${prerelease_args[@]}"
           fi
+          release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG_NAME}" --jq .id)"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            -X PATCH \
+            -f target_commitish="$GITHUB_SHA" >/dev/null
 
       - name: Validate published release download
         env:

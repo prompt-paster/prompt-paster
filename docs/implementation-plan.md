@@ -665,6 +665,8 @@ Tasks:
   tag to the validated workflow commit before uploading assets.
 - Upload the DMG as a workflow artifact.
 - Create or update the GitHub Release and attach the DMG.
+- Patch GitHub Release metadata so `target_commitish` matches the validated
+  workflow commit after release reruns.
 - Download the published stable `PromptPaster.dmg` release asset and run the
   same validator on that downloaded artifact before the workflow succeeds.
 - Support optional Developer ID signing and notarization through GitHub Actions

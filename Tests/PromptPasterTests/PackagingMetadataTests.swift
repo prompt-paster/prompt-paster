@@ -87,6 +87,8 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(workflow.contains("Validate published release download"))
         XCTAssertTrue(workflow.contains("gh release download \"$TAG_NAME\""))
         XCTAssertTrue(workflow.contains("scripts/validate-release-package.sh \"$download_dir/PromptPaster.dmg\""))
+        XCTAssertTrue(workflow.contains("releases/tags/${TAG_NAME}"))
+        XCTAssertTrue(workflow.contains("-f target_commitish=\"$GITHUB_SHA\""))
     }
 
     func testPackagingScriptsValidateBundleSignatures() throws {
