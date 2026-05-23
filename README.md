@@ -139,6 +139,14 @@ The release workflow at `.github/workflows/release.yml` builds and validates the
 DMG on a GitHub-hosted macOS runner, uploads the DMG as a workflow artifact, and
 creates or updates a GitHub Release with the DMG attached.
 
+The workflow uploads both a versioned artifact, such as
+`PromptPaster-0.1.0.dmg`, and a stable `PromptPaster.dmg` alias. The stable
+asset keeps the website download URL version-independent:
+
+```text
+https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg
+```
+
 Manual alpha release:
 
 ```bash
@@ -180,6 +188,7 @@ can be enabled from the app settings window.
 
 ## Planning Docs
 
+- [Website](https://prompt-paster.github.io/prompt-paster/)
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
 - [Review recommendations](docs/review-recommendations.md)
