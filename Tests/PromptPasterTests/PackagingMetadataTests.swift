@@ -92,6 +92,8 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(site.contains("https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg"))
         XCTAssertTrue(site.contains("Download for macOS"))
         XCTAssertTrue(site.contains("Requires macOS 14"))
+        XCTAssertTrue(site.contains("MIT licensed."))
+        XCTAssertFalse(site.contains("Apache-2.0"))
     }
 
     func testReleaseWorkflowSupportsSigningAndNotarizationSecrets() throws {
