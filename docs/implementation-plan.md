@@ -425,8 +425,8 @@ Recommended approach:
 
 Options:
 
-- Write the fallback hotkey and modifier detector directly using AppKit/Core
-  Graphics APIs.
+- Write the fallback hotkey and modifier detector directly using AppKit, Core
+  Graphics, and IOHID APIs.
 - Use a small maintained Swift hotkey package for chord registration and keep
   double-`Control` custom.
 

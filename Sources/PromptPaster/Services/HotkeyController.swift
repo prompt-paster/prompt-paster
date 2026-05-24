@@ -1,6 +1,7 @@
 import Carbon.HIToolbox
 import AppKit
 import Foundation
+import IOKit.hid
 
 private let promptPasterHotKeySignature: OSType = 0x5050_484B
 private let promptPasterFallbackHotKeyID: UInt32 = 1
@@ -98,6 +99,19 @@ enum DoubleTapModifier: String, CaseIterable, Identifiable {
             [CGKeyCode(kVK_Shift), CGKeyCode(kVK_RightShift)]
         case .command:
             [CGKeyCode(kVK_Command), CGKeyCode(kVK_RightCommand)]
+        }
+    }
+
+    var hidUsages: Set<Int> {
+        switch self {
+        case .control:
+            [0xE0, 0xE4]
+        case .shift:
+            [0xE1, 0xE5]
+        case .option:
+            [0xE2, 0xE6]
+        case .command:
+            [0xE3, 0xE7]
         }
     }
 
@@ -677,6 +691,7 @@ final class ResilientDoubleControlMonitor: DoubleControlMonitoring {
     }
 
     init(monitors: [DoubleControlMonitoring] = [
+        IOHIDDoubleControlMonitor(),
         CGEventDoubleControlMonitor(),
         NSEventDoubleControlMonitor()
     ]) {
@@ -708,6 +723,88 @@ final class ResilientDoubleControlMonitor: DoubleControlMonitoring {
     func stop() {
         activeMonitor?.stop()
         activeMonitor = nil
+    }
+}
+
+@MainActor
+final class IOHIDDoubleControlMonitor: DoubleControlMonitoring {
+    private let keyboardUsagePage = 0x07
+    private var manager: IOHIDManager?
+    private var eventHandler: (@MainActor (DoubleControlTapInput) -> Void)?
+    private var modifier: DoubleTapModifier = .control
+    private var pressedModifierUsages: Set<Int> = []
+
+    var isRunning: Bool {
+        manager != nil
+    }
+
+    func start(
+        modifier: DoubleTapModifier,
+        eventHandler: @escaping @MainActor (DoubleControlTapInput) -> Void
+    ) throws {
+        guard manager == nil else {
+            self.modifier = modifier
+            self.eventHandler = eventHandler
+            return
+        }
+
+        let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+        let keyboardMatch: [String: Any] = [
+            kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
+            kIOHIDDeviceUsageKey: kHIDUsage_GD_Keyboard
+        ]
+
+        IOHIDManagerSetDeviceMatching(manager, keyboardMatch as CFDictionary)
+        IOHIDManagerRegisterInputValueCallback(
+            manager,
+            { context, _, _, value in
+                guard let context else {
+                    return
+                }
+                let monitor = Unmanaged<IOHIDDoubleControlMonitor>
+                    .fromOpaque(context)
+                    .takeUnretainedValue()
+                Task { @MainActor in
+                    monitor.handle(value)
+                }
+            },
+            Unmanaged.passUnretained(self).toOpaque()
+        )
+
+        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        let result = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard result == kIOReturnSuccess else {
+            IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+            throw HotkeyControllerError.doubleControlMonitorFailed
+        }
+
+        self.modifier = modifier
+        self.eventHandler = eventHandler
+        self.manager = manager
+        self.pressedModifierUsages = []
+    }
+
+    func stop() {
+        guard let manager else {
+            return
+        }
+        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue)
+        IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        self.manager = nil
+        self.eventHandler = nil
+        self.pressedModifierUsages = []
+    }
+
+    private func handle(_ value: IOHIDValue) {
+        guard let input = DoubleControlEventInputMapper.input(
+            for: value,
+            pressedModifierUsages: &pressedModifierUsages,
+            timestamp: ProcessInfo.processInfo.systemUptime,
+            modifier: modifier
+        ) else {
+            return
+        }
+        eventHandler?(input)
     }
 }
 
@@ -873,6 +970,58 @@ final class CGEventDoubleControlMonitor: DoubleControlMonitoring {
 }
 
 enum DoubleControlEventInputMapper {
+    static let hidModifierUsages: Set<Int> = [
+        0xE0, 0xE1, 0xE2, 0xE3,
+        0xE4, 0xE5, 0xE6, 0xE7
+    ]
+
+    static func input(
+        for usagePage: Int,
+        usage: Int,
+        isPressed: Bool,
+        pressedModifierUsages: inout Set<Int>,
+        timestamp: TimeInterval,
+        modifier: DoubleTapModifier = .control
+    ) -> DoubleControlTapInput? {
+        guard usagePage == 0x07, hidModifierUsages.contains(usage) else {
+            return nil
+        }
+
+        if isPressed {
+            pressedModifierUsages.insert(usage)
+        } else {
+            pressedModifierUsages.remove(usage)
+        }
+
+        guard modifier.hidUsages.contains(usage) else {
+            return .unrelatedInput(timestamp: timestamp)
+        }
+
+        let otherModifiersPressed = pressedModifierUsages.contains { !modifier.hidUsages.contains($0) }
+        return .controlChanged(
+            isPressed: isPressed,
+            otherModifiersPressed: otherModifiersPressed,
+            timestamp: timestamp
+        )
+    }
+
+    static func input(
+        for value: IOHIDValue,
+        pressedModifierUsages: inout Set<Int>,
+        timestamp: TimeInterval,
+        modifier: DoubleTapModifier = .control
+    ) -> DoubleControlTapInput? {
+        let element = IOHIDValueGetElement(value)
+        return input(
+            for: Int(IOHIDElementGetUsagePage(element)),
+            usage: Int(IOHIDElementGetUsage(element)),
+            isPressed: IOHIDValueGetIntegerValue(value) != 0,
+            pressedModifierUsages: &pressedModifierUsages,
+            timestamp: timestamp,
+            modifier: modifier
+        )
+    }
+
     static func input(
         for type: NSEvent.EventType,
         keyCode: UInt16,

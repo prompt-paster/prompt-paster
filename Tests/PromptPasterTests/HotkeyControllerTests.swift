@@ -477,6 +477,48 @@ final class HotkeyControllerTests: XCTestCase {
         )
     }
 
+    func testDoubleControlEventMapperMapsHIDModifierEvents() {
+        var pressedUsages: Set<Int> = []
+
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: 0x07,
+                usage: 0xE1,
+                isPressed: true,
+                pressedModifierUsages: &pressedUsages,
+                timestamp: 8.0,
+                modifier: .shift
+            ),
+            .controlChanged(isPressed: true, otherModifiersPressed: false, timestamp: 8.0)
+        )
+        XCTAssertEqual(pressedUsages, [0xE1])
+
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: 0x07,
+                usage: 0xE0,
+                isPressed: true,
+                pressedModifierUsages: &pressedUsages,
+                timestamp: 8.1,
+                modifier: .shift
+            ),
+            .unrelatedInput(timestamp: 8.1)
+        )
+        XCTAssertEqual(pressedUsages, [0xE0, 0xE1])
+
+        XCTAssertEqual(
+            DoubleControlEventInputMapper.input(
+                for: 0x07,
+                usage: 0xE1,
+                isPressed: false,
+                pressedModifierUsages: &pressedUsages,
+                timestamp: 8.2,
+                modifier: .shift
+            ),
+            .controlChanged(isPressed: false, otherModifiersPressed: true, timestamp: 8.2)
+        )
+    }
+
     func testDoubleControlEventMapperTreatsNonControlModifierAndKeyDownAsInterruptions() {
         XCTAssertEqual(
             DoubleControlEventInputMapper.input(

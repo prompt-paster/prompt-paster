@@ -108,11 +108,11 @@ Default user library path:
 - Fallback global hotkey: configurable preset through `HotkeyController`;
   default is `Control + Option + Space`.
 - Double-tap trigger: configurable modifier through `HotkeyController`;
-  default is Double Control. The production path tries the original low-level
-  `CGEvent` tap first, because that was the version confirmed working in manual
-  QA. AppKit global `NSEvent` monitoring remains a setup fallback. Input
-  Monitoring is advisory and only becomes the surfaced status if monitor startup
-  fails while that TCC grant is absent.
+  default is Double Control. The production path tries an `IOHIDManager`
+  keyboard-modifier monitor first, then the original low-level `CGEvent` tap,
+  then AppKit global `NSEvent` monitoring. Input Monitoring is advisory and
+  only becomes the surfaced status if monitor startup fails while that TCC grant
+  is absent.
 - Trigger mode, fallback hotkey preset, double-tap modifier, double-tap timing,
   launch-at-login state, overlay display sizing, overlay font size, prompt
   preview character limits, optional prompt-card tag display, and prompt
