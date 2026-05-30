@@ -1,7 +1,18 @@
 # Prompt Paster
 
+[![Release](https://img.shields.io/github/v/release/prompt-paster/prompt-paster?label=release)](https://github.com/prompt-paster/prompt-paster/releases/latest)
+[![Download DMG](https://img.shields.io/badge/download-DMG-0f766e)](https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg)
+[![Website](https://img.shields.io/badge/site-prompt--paster.github.io-2563eb)](https://prompt-paster.github.io/prompt-paster/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Prompt Paster is a native macOS utility for quickly selecting reusable coding
 agent prompts from an overlay and copying them to the clipboard.
+
+Created by [Shay Palachy Affek](http://www.shaypalachy.com/).
+
+![Prompt Paster overlay preview](docs/assets/overlay-preview.svg)
+
+**Website:** [prompt-paster.github.io/prompt-paster](https://prompt-paster.github.io/prompt-paster/) · **Download:** [latest DMG](https://github.com/prompt-paster/prompt-paster/releases/latest/download/PromptPaster.dmg)
 
 ## Current Status
 
@@ -205,3 +216,7 @@ settings window.
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
 - [Review recommendations](docs/review-recommendations.md)
+
+## Credits
+
+Created by [Shay Palachy Affek ](http://www.shaypalachy.com/) [[GitHub](https://github.com/shaypal5)]
