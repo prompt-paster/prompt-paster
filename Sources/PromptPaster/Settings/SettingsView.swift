@@ -5,6 +5,7 @@ struct SettingsView: View {
     @ObservedObject var promptStore: PromptStore
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var promptUsageStore: PromptUsageStore
+    @ObservedObject var githubCredentialStore: GitHubCredentialStore
     let openLibraryManager: () -> Void
     let fallbackHotkeyStatusMessage: String?
     let doubleControlStatus: DoubleControlTriggerStatus
@@ -14,11 +15,13 @@ struct SettingsView: View {
     let requestAccessibilityPermission: () -> Void
     let openInputMonitoringSettings: () -> Void
     let requestInputMonitoringPermission: () -> Void
+    @State private var githubToken = ""
 
     init(
         promptStore: PromptStore,
         settingsStore: SettingsStore,
         promptUsageStore: PromptUsageStore,
+        githubCredentialStore: GitHubCredentialStore,
         openLibraryManager: @escaping () -> Void = {},
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
@@ -32,6 +35,7 @@ struct SettingsView: View {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
         self.promptUsageStore = promptUsageStore
+        self.githubCredentialStore = githubCredentialStore
         self.openLibraryManager = openLibraryManager
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
@@ -134,6 +138,11 @@ struct SettingsView: View {
             }
 
             Section("Overlay Display") {
+                Toggle("Show favorites home when opening Prompt Paster", isOn: $settingsStore.homeScreenEnabled)
+                Text("When enabled, an empty overlay shows your starred prompts. Start typing to switch to dynamic search results.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
                 Picker("Overlay size", selection: $settingsStore.overlaySizeMode) {
                     ForEach(OverlaySizeMode.allCases) { mode in
                         Text(mode.displayName).tag(mode)
@@ -295,6 +304,32 @@ struct SettingsView: View {
                 }
             }
 
+            Section("GitHub access") {
+                LabeledContent("Token", value: githubCredentialStore.hasToken ? "Stored in this Mac's Keychain" : "Not set")
+                SecureField("Fine-grained GitHub token", text: $githubToken)
+                HStack {
+                    Button("Save token") {
+                        githubCredentialStore.saveToken(githubToken)
+                        githubToken = ""
+                    }
+                    .disabled(githubToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    if githubCredentialStore.hasToken {
+                        Button("Remove token", role: .destructive) {
+                            githubCredentialStore.saveToken("")
+                        }
+                    }
+                }
+                Text("Use a fine-grained token with read-only Contents access for private repositories. Public repositories work without a token; the token is never written to prompts.json.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                if let errorMessage = githubCredentialStore.errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+
             Section("App") {
                 Toggle("Launch at login", isOn: Binding(
                     get: {
@@ -328,7 +363,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(minWidth: 620, minHeight: 680)
+        .frame(minWidth: 620, minHeight: 740)
     }
 }
 

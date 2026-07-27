@@ -102,7 +102,12 @@ struct PromptLibraryManagerState {
 
         var prompts = library.prompts
         prompts[promptIndex] = try draft.updatedPrompt(from: prompts[promptIndex])
-        return PromptLibrary(version: library.version, prompts: prompts)
+        return PromptLibrary(
+            version: library.version,
+            prompts: prompts,
+            githubSources: library.githubSources,
+            composites: library.composites
+        )
     }
 
     private static func tagID(for value: String) -> String {

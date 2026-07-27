@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     private let promptStore = PromptStore()
     private let settingsStore = SettingsStore()
     private let promptUsageStore = PromptUsageStore()
+    private let githubCredentialStore = GitHubCredentialStore()
     private var fallbackHotkeyStatusMessage: String?
     private var doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility
     private lazy var overlayController = OverlayWindowController(
@@ -21,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         promptStore: promptStore,
         settingsStore: settingsStore,
         promptUsageStore: promptUsageStore,
+        githubCredentialStore: githubCredentialStore,
         openLibraryManager: { [weak self] in
             self?.openLibraryManager()
         },
@@ -118,11 +120,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     }
 
     func handleHotkeyTrigger() {
-        overlayController.toggle()
+        if overlayController.isVisible {
+            overlayController.hide()
+        } else {
+            refreshSourcesAndShow()
+        }
     }
 
     @objc private func openPromptPaster() {
-        overlayController.show()
+        refreshSourcesAndShow()
     }
 
     @objc private func openSettings() {
@@ -153,7 +159,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         } else {
             let promptCount = result.library?.prompts.count ?? 0
             prunePromptUsageStats()
-            overlayController.show(message: "Reloaded \(promptCount) prompts.")
+            Task { [weak self] in
+                guard let self else { return }
+                await self.promptStore.refreshGitHubSources(token: self.githubCredentialStore.token)
+                self.prunePromptUsageStats()
+                self.overlayController.show(message: "Reloaded \(promptCount) local prompts and refreshed GitHub sources.")
+            }
         }
     }
 
@@ -212,7 +223,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     }
 
     private func prunePromptUsageStats() {
-        let promptIDs = Set(promptStore.library?.prompts.map(\.id) ?? [])
+        let promptIDs = Set(promptStore.effectivePrompts.map(\.id))
         promptUsageStore.pruneKeepingPromptIDs(promptIDs)
+    }
+
+    private func refreshSourcesAndShow() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.promptStore.refreshGitHubSources(token: self.githubCredentialStore.token)
+            self.prunePromptUsageStats()
+            self.overlayController.show()
+        }
     }
 }

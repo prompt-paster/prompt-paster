@@ -11,6 +11,8 @@ final class PromptLibraryManagerViewModel: ObservableObject {
     @Published private(set) var draft: PromptLibraryDraft?
     @Published var statusMessage: String?
     @Published var errorMessage: String?
+    @Published var githubSources: [GitHubPromptSource]
+    @Published var composites: [CompositePromptDefinition]
 
     private let promptStore: PromptStore
     private var originalDraft: PromptLibraryDraft?
@@ -18,6 +20,8 @@ final class PromptLibraryManagerViewModel: ObservableObject {
 
     init(promptStore: PromptStore) {
         self.promptStore = promptStore
+        self.githubSources = promptStore.library?.githubSources ?? []
+        self.composites = promptStore.library?.composites ?? []
         selectedPromptID = promptStore.library?.prompts.first?.id
         refreshDraft()
         promptStoreCancellable = promptStore.$library.sink { [weak self] library in
@@ -56,6 +60,11 @@ final class PromptLibraryManagerViewModel: ObservableObject {
 
     var isDirty: Bool {
         draft != originalDraft
+    }
+
+    var configurationsDirty: Bool {
+        githubSources != promptStore.library?.githubSources
+            || composites != promptStore.library?.composites
     }
 
     var titleErrorMessage: String? {
@@ -147,6 +156,51 @@ final class PromptLibraryManagerViewModel: ObservableObject {
         statusMessage = "Discarded unsaved changes."
     }
 
+    func addGitHubSource() {
+        let number = githubSources.count + 1
+        githubSources.append(GitHubPromptSource(
+            id: "github-source-\(number)",
+            title: "New GitHub prompt",
+            owner: "owner",
+            repository: "repository",
+            path: "prompts/prompt.md"
+        ))
+    }
+
+    func removeGitHubSources(at offsets: IndexSet) {
+        githubSources.remove(atOffsets: offsets)
+    }
+
+    func addComposite() {
+        let number = composites.count + 1
+        composites.append(CompositePromptDefinition(
+            id: "composite-\(number)",
+            title: "New composite prompt",
+            componentPromptIDs: prompts.prefix(1).map(\.id)
+        ))
+    }
+
+    func removeComposites(at offsets: IndexSet) {
+        composites.remove(atOffsets: offsets)
+    }
+
+    func saveConfigurations() {
+        guard let library = promptStore.library else { return }
+        do {
+            _ = try promptStore.save(PromptLibrary(
+                version: library.version,
+                prompts: library.prompts,
+                githubSources: githubSources,
+                composites: composites
+            ))
+            statusMessage = "Saved GitHub sources and composite prompts. They refresh the next time Prompt Paster opens."
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            promptStore.recordError(error)
+        }
+    }
+
     func openLibraryFile() {
         do {
             NSWorkspace.shared.open(try promptStore.prepareLibraryFile())
@@ -180,6 +234,8 @@ final class PromptLibraryManagerViewModel: ObservableObject {
         }
 
         let prompts = library?.prompts ?? []
+        githubSources = library?.githubSources ?? []
+        composites = library?.composites ?? []
         if let selectedPromptID, prompts.contains(where: { $0.id == selectedPromptID }) {
             refreshDraft(from: prompts)
         } else {

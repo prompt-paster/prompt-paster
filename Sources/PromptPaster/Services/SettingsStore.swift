@@ -141,6 +141,8 @@ final class SettingsStore: ObservableObject {
         static let fallbackHotkeyPreset = "settings.fallbackHotkeyPreset"
         static let doubleTapModifier = "settings.doubleTapModifier"
         static let showsPromptTagsOnCards = "settings.showsPromptTagsOnCards"
+        static let homeScreenEnabled = "settings.homeScreenEnabled"
+        static let homePromptSlots = "settings.homePromptSlots"
     }
 
     nonisolated static let defaultDoubleControlThresholdMilliseconds = 350
@@ -206,6 +208,10 @@ final class SettingsStore: ObservableObject {
         }
     }
     @Published private(set) var promptOrderingOverridesByCategoryID: [String: PromptOrderingMode]
+    @Published var homeScreenEnabled: Bool {
+        didSet { defaults.set(homeScreenEnabled, forKey: Keys.homeScreenEnabled) }
+    }
+    @Published private(set) var homePromptSlots: [PromptHomeSlot]
 
     @Published private(set) var launchAtLoginStatus: LaunchAtLoginStatus
     @Published private(set) var launchAtLoginErrorMessage: String?
@@ -303,6 +309,8 @@ final class SettingsStore: ObservableObject {
             from: defaults,
             key: Keys.promptOrderingOverridesByCategoryID
         )
+        self.homeScreenEnabled = defaults.object(forKey: Keys.homeScreenEnabled) as? Bool ?? true
+        self.homePromptSlots = Self.loadHomePromptSlots(from: defaults)
 
         self.launchAtLoginStatus = loginItemManager.launchAtLoginStatus
         self.launchAtLoginErrorMessage = nil
@@ -406,6 +414,48 @@ final class SettingsStore: ObservableObject {
         persistPromptOrderingOverrides()
     }
 
+    func isFavorite(promptID: Prompt.ID) -> Bool {
+        homePromptSlots.contains { $0.promptID == promptID }
+    }
+
+    func toggleFavorite(promptID: Prompt.ID) {
+        if homePromptSlots.contains(where: { $0.promptID == promptID }) {
+            homePromptSlots.removeAll { $0.promptID == promptID }
+        } else if homePromptSlots.count < PromptHomeConfiguration.maximumPromptCount,
+                  let key = PromptHomeConfiguration.nextAvailableKey(excluding: homePromptSlots) {
+            homePromptSlots.append(PromptHomeSlot(promptID: promptID, key: key))
+        }
+        persistHomePromptSlots()
+    }
+
+    func setHomePromptKey(_ key: String, for promptID: Prompt.ID) {
+        let normalizedKey = PromptHomeConfiguration.normalizedKey(key)
+        guard !normalizedKey.isEmpty,
+              let index = homePromptSlots.firstIndex(where: { $0.promptID == promptID }),
+              !homePromptSlots.enumerated().contains(where: { $0.offset != index && $0.element.key == normalizedKey })
+        else { return }
+        homePromptSlots[index].key = normalizedKey
+        persistHomePromptSlots()
+    }
+
+    func moveHomePrompt(_ promptID: Prompt.ID, before destinationPromptID: Prompt.ID) {
+        guard let sourceIndex = homePromptSlots.firstIndex(where: { $0.promptID == promptID }),
+              let destinationIndex = homePromptSlots.firstIndex(where: { $0.promptID == destinationPromptID }),
+              sourceIndex != destinationIndex
+        else { return }
+        let slot = homePromptSlots.remove(at: sourceIndex)
+        let adjustedDestination = sourceIndex < destinationIndex ? destinationIndex - 1 : destinationIndex
+        homePromptSlots.insert(slot, at: adjustedDestination)
+        persistHomePromptSlots()
+    }
+
+    func pruneHomePrompts(keepingPromptIDs promptIDs: Set<Prompt.ID>) {
+        let pruned = homePromptSlots.filter { promptIDs.contains($0.promptID) }
+        guard pruned != homePromptSlots else { return }
+        homePromptSlots = pruned
+        persistHomePromptSlots()
+    }
+
     func setLaunchAtLoginEnabled(_ isEnabled: Bool) {
         do {
             try loginItemManager.setLaunchAtLoginEnabled(isEnabled)
@@ -479,6 +529,19 @@ final class SettingsStore: ObservableObject {
             return
         }
         defaults.set(data, forKey: Keys.promptOrderingOverridesByCategoryID)
+    }
+
+    private static func loadHomePromptSlots(from defaults: UserDefaults) -> [PromptHomeSlot] {
+        guard let data = defaults.data(forKey: Keys.homePromptSlots),
+              let slots = try? JSONDecoder().decode([PromptHomeSlot].self, from: data)
+        else { return [] }
+        return PromptHomeConfiguration.normalizedSlots(slots)
+    }
+
+    private func persistHomePromptSlots() {
+        homePromptSlots = PromptHomeConfiguration.normalizedSlots(homePromptSlots)
+        guard let data = try? JSONEncoder().encode(homePromptSlots) else { return }
+        defaults.set(data, forKey: Keys.homePromptSlots)
     }
 }
 

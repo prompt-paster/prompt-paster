@@ -2,8 +2,20 @@ import SwiftUI
 
 struct PromptLibraryManagerView: View {
     @ObservedObject var viewModel: PromptLibraryManagerViewModel
+    @State private var selectedTab = "prompts"
 
     var body: some View {
+        TabView(selection: $selectedTab) {
+            promptEditor
+                .tabItem { Label("Prompts", systemImage: "text.book.closed") }
+                .tag("prompts")
+            configurationEditor
+                .tabItem { Label("Sources & Composites", systemImage: "point.3.connected.trianglepath.dotted") }
+                .tag("configurations")
+        }
+    }
+
+    private var promptEditor: some View {
         NavigationSplitView {
             VStack(spacing: 12) {
                 TextField("Search prompts", text: $viewModel.query)
@@ -74,6 +86,149 @@ struct PromptLibraryManagerView: View {
         .onChange(of: viewModel.query) { _, _ in viewModel.reconcileSelectionAfterFiltering() }
         .onChange(of: viewModel.selectedCategoryID) { _, _ in viewModel.reconcileSelectionAfterFiltering() }
         .onChange(of: viewModel.selectedTagID) { _, _ in viewModel.reconcileSelectionAfterFiltering() }
+    }
+
+    private var configurationEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("GitHub prompt sources")
+                .font(.title2)
+            Text("Each source downloads one Markdown or plain-text file from GitHub whenever the overlay opens. A GitHub token is stored separately in Settings > GitHub access.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            List {
+                Section("Markdown and text files") {
+                    ForEach($viewModel.githubSources) { $source in
+                        GitHubSourceEditor(source: $source)
+                    }
+                    .onDelete(perform: viewModel.removeGitHubSources)
+
+                    Button {
+                        viewModel.addGitHubSource()
+                    } label: {
+                        Label("Add GitHub file", systemImage: "plus")
+                    }
+                }
+
+                Section("Composite prompts") {
+                    Text("Component IDs can refer to local prompts or GitHub sources. A GitHub source named `team-rules` becomes the prompt ID `github-team-rules`.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    ForEach($viewModel.composites) { $composite in
+                        CompositePromptEditor(composite: $composite)
+                    }
+                    .onDelete(perform: viewModel.removeComposites)
+
+                    Button {
+                        viewModel.addComposite()
+                    } label: {
+                        Label("Add composite prompt", systemImage: "plus")
+                    }
+                }
+            }
+
+            HStack {
+                Spacer()
+                Button("Save Sources & Composites") {
+                    viewModel.saveConfigurations()
+                }
+                .disabled(!viewModel.configurationsDirty)
+            }
+        }
+        .padding()
+        .frame(minWidth: 760, minHeight: 620)
+        .safeAreaInset(edge: .bottom) {
+            PromptLibraryManagerFooter(viewModel: viewModel)
+        }
+    }
+}
+
+private struct GitHubSourceEditor: View {
+    @Binding var source: GitHubPromptSource
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+            GridRow {
+                Text("ID")
+                TextField("team-rules", text: $source.id)
+            }
+            GridRow {
+                Text("Title")
+                TextField("Team rules", text: $source.title)
+            }
+            GridRow {
+                Text("Repository")
+                HStack {
+                    TextField("owner", text: $source.owner)
+                    Text("/").foregroundStyle(.secondary)
+                    TextField("repository", text: $source.repository)
+                    Text("@").foregroundStyle(.secondary)
+                    TextField("main or a tag", text: $source.ref)
+                }
+            }
+            GridRow {
+                Text("File")
+                TextField("prompts/rules.md", text: $source.path)
+            }
+            GridRow {
+                Text("Category")
+                TextField("Optional", text: Binding(
+                    get: { source.category ?? "" },
+                    set: { source.category = $0.isEmpty ? nil : $0 }
+                ))
+            }
+            GridRow {
+                Text("Tags")
+                TextField("Comma-separated", text: Binding(
+                    get: { source.tags.joined(separator: ", ") },
+                    set: { source.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+                ))
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+private struct CompositePromptEditor: View {
+    @Binding var composite: CompositePromptDefinition
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+            GridRow {
+                Text("ID")
+                TextField("combined-team-rules", text: $composite.id)
+            }
+            GridRow {
+                Text("Title")
+                TextField("Combined team rules", text: $composite.title)
+            }
+            GridRow {
+                Text("Component IDs")
+                TextField("github-first, github-second", text: Binding(
+                    get: { composite.componentPromptIDs.joined(separator: ", ") },
+                    set: { composite.componentPromptIDs = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+                ))
+            }
+            GridRow {
+                Text("Separator")
+                TextField("Blank line", text: $composite.separator)
+            }
+            GridRow {
+                Text("Category")
+                TextField("Optional", text: Binding(
+                    get: { composite.category ?? "" },
+                    set: { composite.category = $0.isEmpty ? nil : $0 }
+                ))
+            }
+            GridRow {
+                Text("Tags")
+                TextField("Comma-separated", text: Binding(
+                    get: { composite.tags.joined(separator: ", ") },
+                    set: { composite.tags = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+                ))
+            }
+        }
+        .padding(.vertical, 6)
     }
 }
 

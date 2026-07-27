@@ -27,6 +27,9 @@ selection loop:
 - configurable fallback global hotkey, defaulting to `Control+Option+Space`
 - configurable double-modifier trigger support, defaulting to double-Control
 - settings and launch-at-login wiring
+- GitHub Markdown/text prompt sources with Keychain-held credentials
+- an optional starred-prompt home screen with editable order and letter keys
+- local composite prompts that concatenate local and GitHub-backed prompts
 - local `.app` and DMG release packaging
 
 Auto-paste is intentionally out of scope for v1. Selecting a prompt copies the
@@ -210,11 +213,28 @@ The fallback hotkey defaults to `Control+Option+Space`. The fallback hotkey,
 double-modifier trigger, and overlay font size can be changed from the app
 settings window.
 
+## GitHub Sources, Home, and Composite Prompts
+
+Use **Edit Prompt Library → Sources & Composites** to configure a Markdown,
+`.markdown`, or `.txt` file from any GitHub repository, branch, commit, or tag.
+Prompt Paster refreshes configured files before showing the overlay, so the
+selectable prompt uses the current GitHub content. Add a fine-grained token
+with read-only Contents access in **Settings → GitHub access** for private
+repositories; it is stored in the macOS Keychain, never in `prompts.json`.
+
+Star a card to add it to the default home screen. The pencil in the overlay
+enables drag-to-reorder and per-card letter editing; start typing in search to
+switch to dynamic search results. Composite prompts are local definitions that
+join component prompt IDs in order. See the
+[source, home, and composite design](docs/prompt-sources-home-composites.md)
+for the precise ID convention and failure behavior.
+
 ## Planning Docs
 
 - [Website](https://prompt-paster.github.io/prompt-paster/)
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [GitHub sources, home, and composites](docs/prompt-sources-home-composites.md)
 - [Review recommendations](docs/review-recommendations.md)
 
 ## Credits

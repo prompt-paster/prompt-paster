@@ -5,10 +5,31 @@ struct PromptLibrary: Codable, Equatable {
 
     let version: Int
     let prompts: [Prompt]
+    let githubSources: [GitHubPromptSource]
+    let composites: [CompositePromptDefinition]
 
-    init(version: Int = supportedVersion, prompts: [Prompt]) {
+    init(
+        version: Int = supportedVersion,
+        prompts: [Prompt],
+        githubSources: [GitHubPromptSource] = [],
+        composites: [CompositePromptDefinition] = []
+    ) {
         self.version = version
         self.prompts = prompts
+        self.githubSources = githubSources
+        self.composites = composites
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, prompts, githubSources, composites
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decode(Int.self, forKey: .version)
+        prompts = try container.decode([Prompt].self, forKey: .prompts)
+        githubSources = try container.decodeIfPresent([GitHubPromptSource].self, forKey: .githubSources) ?? []
+        composites = try container.decodeIfPresent([CompositePromptDefinition].self, forKey: .composites) ?? []
     }
 }
 
@@ -91,6 +112,38 @@ extension PromptLibrary {
             loadablePrompts.append(prompt)
         }
 
+        for source in githubSources {
+            guard Self.isValidSlug(source.id) else {
+                throw PromptSourceValidationError.invalidSourceID(source.id)
+            }
+            guard !source.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PromptSourceValidationError.emptySourceTitle(source.id)
+            }
+            guard !source.owner.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !source.repository.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !source.ref.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !source.path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+                throw PromptSourceValidationError.incompleteRepository(source.id)
+            }
+            let extensionName = URL(fileURLWithPath: source.path).pathExtension.lowercased()
+            guard ["md", "markdown", "txt"].contains(extensionName) else {
+                throw PromptSourceValidationError.unsupportedFile(source.id)
+            }
+        }
+
+        for composite in composites {
+            guard Self.isValidSlug(composite.id) else {
+                throw PromptSourceValidationError.invalidCompositeID(composite.id)
+            }
+            guard !composite.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw PromptSourceValidationError.emptyCompositeTitle(composite.id)
+            }
+            guard !composite.componentPromptIDs.isEmpty else {
+                throw PromptSourceValidationError.emptyCompositeComponents(composite.id)
+            }
+        }
+
         let duplicateWarnings = duplicateIndexesByID
             .map { PromptLibraryWarning.duplicateID(id: $0.key, skippedIndexes: $0.value) }
             .sorted { lhs, rhs in
@@ -124,7 +177,12 @@ extension PromptLibrary {
 
         let validation = PromptLibraryValidation(warnings: duplicateWarnings + shortcutWarnings)
         return PromptLibraryLoadResult(
-            library: PromptLibrary(version: version, prompts: loadablePrompts),
+            library: PromptLibrary(
+                version: version,
+                prompts: loadablePrompts,
+                githubSources: githubSources,
+                composites: composites
+            ),
             validation: validation
         )
     }
