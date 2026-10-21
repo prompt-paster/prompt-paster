@@ -667,6 +667,26 @@ Validation:
 6. `ORDERING-1`: Add configurable ordering and usage ranking.
 7. `LIBRARY-UI-1`: Add prompt library manager.
 
+## Developer ID Signing Follow-Up
+
+### `SIGNING-1`: Enable local Developer ID signing and notarization
+
+Goal: produce a Developer ID signed DMG accepted by Apple's notarization
+service and macOS Gatekeeper, using the operator's active Apple Developer
+Program membership.
+
+- Allow local notarization credentials to be stored in macOS Keychain and
+  selected with `NOTARY_KEYCHAIN_PROFILE`; retain the CI credential path.
+- Reject missing signing/notarization configuration before compiling.
+- Verify the stapled DMG ticket, the DMG's Gatekeeper assessment, and a
+  quarantined app copy before declaring a notarized build successful.
+- Keep certificates, private keys, passwords, and account-specific setup out
+  of the repository. Configure GitHub signing secrets only if separately needed.
+
+Validation: shell syntax, credential preflight rejection, `swift test`, unsigned
+DMG packaging, and (once credentials are available) notarized DMG validation
+with an installed-style launch smoke check.
+
 ## Release Automation Follow-Up
 
 ### `RELEASE-1`: Add GitHub Actions DMG release publishing

@@ -121,7 +121,7 @@ final class PackagingMetadataTests: XCTestCase {
         XCTAssertTrue(validator.contains("PromptPasterReleaseValidator"))
         XCTAssertTrue(validator.contains("codesign --verify --strict --deep --verbose=2 \"$QUARANTINE_CHECK_DIR/$APP_NAME\""))
         XCTAssertTrue(validator.contains("--expect-notarized"))
-        XCTAssertTrue(validator.contains("spctl --assess --type execute --verbose=4 \"$APP_DIR\""))
+        XCTAssertTrue(validator.contains("spctl --assess --type execute --verbose=4 \"$QUARANTINE_CHECK_DIR/$APP_NAME\""))
     }
 
     func testGitHubPagesSiteLinksDirectlyToStableDMGDownload() throws {

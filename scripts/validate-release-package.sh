@@ -65,6 +65,11 @@ cleanup() {
 trap cleanup EXIT
 
 hdiutil verify "$DMG_PATH" >/dev/null
+if [ "$EXPECT_NOTARIZED" -eq 1 ]; then
+    codesign --verify --verbose=2 "$DMG_PATH"
+    xcrun stapler validate "$DMG_PATH"
+    spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
+fi
 hdiutil attach "$DMG_PATH" -nobrowse -readonly -mountpoint "$MOUNT_DIR" -quiet
 ATTACHED=1
 
@@ -92,12 +97,11 @@ cp -R "$APP_DIR" "$QUARANTINE_CHECK_DIR/"
 xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");PromptPasterReleaseValidator;" \
     "$QUARANTINE_CHECK_DIR/$APP_NAME"
 codesign --verify --strict --deep --verbose=2 "$QUARANTINE_CHECK_DIR/$APP_NAME"
+if [ "$EXPECT_NOTARIZED" -eq 1 ]; then
+    spctl --assess --type execute --verbose=4 "$QUARANTINE_CHECK_DIR/$APP_NAME"
+fi
 rm -rf "$QUARANTINE_CHECK_DIR"
 QUARANTINE_CHECK_DIR=""
-
-if [ "$EXPECT_NOTARIZED" -eq 1 ]; then
-    spctl --assess --type execute --verbose=4 "$APP_DIR"
-fi
 
 if [ "$LAUNCH_SMOKE" -eq 1 ]; then
     INSTALLED_SMOKE_DIR="$(mktemp -d "$TMP_BASE/prompt-paster-installed-smoke.XXXXXX")"
