@@ -7,6 +7,7 @@ final class SettingsWindowController {
     private let promptStore: PromptStore
     private let settingsStore: SettingsStore
     private let promptUsageStore: PromptUsageStore
+    private let githubCredentialStore: GitHubCredentialStore
     private let openLibraryManager: () -> Void
     private let triggerModeChanged: () -> Void
     private let doubleControlTimingChanged: () -> Void
@@ -29,6 +30,7 @@ final class SettingsWindowController {
         promptStore: PromptStore,
         settingsStore: SettingsStore,
         promptUsageStore: PromptUsageStore,
+        githubCredentialStore: GitHubCredentialStore,
         openLibraryManager: @escaping () -> Void = {},
         fallbackHotkeyStatusMessage: String? = nil,
         doubleControlStatus: DoubleControlTriggerStatus = .needsAccessibility,
@@ -42,6 +44,7 @@ final class SettingsWindowController {
         self.promptStore = promptStore
         self.settingsStore = settingsStore
         self.promptUsageStore = promptUsageStore
+        self.githubCredentialStore = githubCredentialStore
         self.openLibraryManager = openLibraryManager
         self.fallbackHotkeyStatusMessage = fallbackHotkeyStatusMessage
         self.doubleControlStatus = doubleControlStatus
@@ -88,6 +91,7 @@ final class SettingsWindowController {
             promptStore: promptStore,
             settingsStore: settingsStore,
             promptUsageStore: promptUsageStore,
+            githubCredentialStore: githubCredentialStore,
             openLibraryManager: openLibraryManager,
             fallbackHotkeyStatusMessage: fallbackHotkeyStatusMessage,
             doubleControlStatus: doubleControlStatus,

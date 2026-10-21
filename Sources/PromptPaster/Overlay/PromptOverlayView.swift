@@ -15,6 +15,8 @@ struct PromptOverlayView: View {
     @State private var selectedPromptID: Prompt.ID?
     @State private var copyStatusMessage: String?
     @State private var promptGridColumnCount = 1
+    @State private var isEditingHome = false
+    @State private var draggedHomePromptID: Prompt.ID?
     @FocusState private var isSearchFocused: Bool
 
     init(
@@ -36,7 +38,7 @@ struct PromptOverlayView: View {
     }
 
     private var prompts: [Prompt] {
-        promptStore.library?.prompts ?? []
+        promptStore.effectivePrompts
     }
 
     private var categories: [PromptCategoryFilter] {
@@ -53,6 +55,18 @@ struct PromptOverlayView: View {
         )
     }
 
+    private var isHomeScreen: Bool {
+        settingsStore.homeScreenEnabled
+            && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var homePrompts: [(slot: PromptHomeSlot, prompt: Prompt)] {
+        let promptsByID = Dictionary(uniqueKeysWithValues: prompts.map { ($0.id, $0) })
+        return settingsStore.homePromptSlots.compactMap { slot in
+            promptsByID[slot.promptID].map { (slot, $0) }
+        }
+    }
+
     private var actions: PromptOverlayActions {
         PromptOverlayActions(
             clipboard: clipboard,
@@ -63,11 +77,14 @@ struct PromptOverlayView: View {
     }
 
     private var shouldShowPromptShortcutBadges: Bool {
+        if isHomeScreen {
+            return !isSearchFocused
+        }
         switch settingsStore.promptSelectionShortcutMode {
         case .spatialLetters:
-            !isSearchFocused
+            return !isSearchFocused
         case .numbers:
-            true
+            return true
         }
     }
 
@@ -76,6 +93,11 @@ struct PromptOverlayView: View {
             return []
         }
 
+        if isHomeScreen {
+            return homePrompts.map {
+                PromptOverlayShortcutAssignment(promptID: $0.prompt.id, key: $0.slot.key)
+            }
+        }
         return PromptOverlayState.shortcutAssignments(
             for: visiblePrompts,
             availableColumns: promptGridColumnCount,
@@ -101,7 +123,9 @@ struct PromptOverlayView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 header
-                categoryChips
+                if !isHomeScreen {
+                    categoryChips
+                }
                 statusArea
                 resultArea
             }
@@ -121,7 +145,7 @@ struct PromptOverlayView: View {
             selectedCategoryID = PromptCategoryFilter.all.id
             keepCategoryVisible()
             keepSelectionVisible()
-            isSearchFocused = true
+            isSearchFocused = false
         }
         .onChange(of: query) { _, _ in
             keepSelectionVisible()
@@ -133,6 +157,7 @@ struct PromptOverlayView: View {
             keepCategoryVisible()
             keepSelectionVisible()
             promptUsageStore.pruneKeepingPromptIDs(Set(prompts.map(\.id)))
+            settingsStore.pruneHomePrompts(keepingPromptIDs: Set(prompts.map(\.id)))
         }
         .onChange(of: settingsStore.promptOrderingMode) { _, _ in
             keepSelectionVisible()
@@ -164,7 +189,7 @@ struct PromptOverlayView: View {
                         .stroke(searchStrokeStyle, lineWidth: 1)
                 )
 
-            Text("\(visiblePrompts.count)")
+            Text("\(isHomeScreen ? homePrompts.count : visiblePrompts.count)")
                 .font(.headline.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(minWidth: 34)
@@ -177,6 +202,19 @@ struct PromptOverlayView: View {
             .buttonStyle(.borderless)
             .help("Settings")
             .accessibilityLabel("Settings")
+
+            if isHomeScreen {
+                Button {
+                    isEditingHome.toggle()
+                } label: {
+                    Image(systemName: isEditingHome ? "checkmark.circle.fill" : "pencil")
+                        .imageScale(.medium)
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.borderless)
+                .help(isEditingHome ? "Done editing home" : "Edit home")
+                .accessibilityLabel(isEditingHome ? "Done editing home" : "Edit home")
+            }
 
             Button("Close", action: close)
                 .keyboardShortcut(.escape, modifiers: [])
@@ -231,12 +269,14 @@ struct PromptOverlayView: View {
             message: message,
             validation: promptStore.lastErrorMessage == nil ? promptStore.validation : nil,
             copyStatusMessage: copyStatusMessage
-        )
+        ) + promptStore.sourceStatusMessages
     }
 
     @ViewBuilder
     private var resultArea: some View {
-        if let emptyState = PromptOverlayState.emptyState(
+        if isHomeScreen {
+            homeResultArea
+        } else if let emptyState = PromptOverlayState.emptyState(
             prompts: prompts,
             visiblePrompts: visiblePrompts,
             query: query,
@@ -247,42 +287,93 @@ struct PromptOverlayView: View {
                 detail: emptyState.detail
             )
         } else {
-            GeometryReader { proxy in
-                let columnCount = PromptOverlayState.promptCardColumnCount(for: proxy.size.width)
-                ScrollView {
-                    LazyVGrid(
-                        columns: promptGridColumns(count: columnCount),
-                        alignment: .leading,
-                        spacing: 10
-                    ) {
-                        ForEach(Array(visiblePrompts.enumerated()), id: \.element.id) { index, prompt in
-                            PromptCardView(
-                                prompt: prompt,
-                                shortcutBadge: promptShortcutAssignments.first { $0.promptID == prompt.id }?.badge,
-                                isSelected: prompt.id == selectedPromptID,
-                                previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
-                                showsPromptTags: settingsStore.showsPromptTagsOnCards
-                            )
-                            .gridCellColumns(
-                                min(
-                                    columnCount,
-                                    PromptOverlayState.promptCardColumnSpan(
-                                        for: prompt,
-                                        availableColumns: columnCount,
-                                        previewCharacterLimit: settingsStore.promptPreviewCharacterLimit
-                                    )
+            promptGrid(prompts: visiblePrompts, isHome: false)
+        }
+    }
+
+    @ViewBuilder
+    private var homeResultArea: some View {
+        if homePrompts.isEmpty {
+            VStack(spacing: 16) {
+                Image(systemName: "star.square.on.square")
+                    .font(.system(size: 34))
+                    .foregroundStyle(.yellow)
+                Text("Make this your prompt home")
+                    .font(.title3.weight(.semibold))
+                Text("Search for a prompt, then select its star. Your chosen prompts will appear here with their own letter keys.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: 420)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(28)
+            .background(.background.opacity(0.32), in: RoundedRectangle(cornerRadius: 12))
+        } else {
+            promptGrid(prompts: homePrompts.map(\.prompt), isHome: true)
+        }
+    }
+
+    @ViewBuilder
+    private func promptGrid(prompts gridPrompts: [Prompt], isHome: Bool) -> some View {
+        GeometryReader { proxy in
+            let columnCount = PromptOverlayState.promptCardColumnCount(for: proxy.size.width)
+            ScrollView {
+                LazyVGrid(
+                    columns: promptGridColumns(count: columnCount),
+                    alignment: .leading,
+                    spacing: 10
+                ) {
+                    ForEach(Array(gridPrompts.enumerated()), id: \.element.id) { index, prompt in
+                        PromptCardView(
+                            prompt: prompt,
+                            shortcutBadge: promptShortcutAssignments.first { $0.promptID == prompt.id }?.badge,
+                            isSelected: prompt.id == selectedPromptID,
+                            previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
+                            showsPromptTags: settingsStore.showsPromptTagsOnCards,
+                            isFavorite: settingsStore.isFavorite(promptID: prompt.id),
+                            favoriteAction: { settingsStore.toggleFavorite(promptID: prompt.id) }
+                        )
+                        .gridCellColumns(
+                            min(
+                                columnCount,
+                                PromptOverlayState.promptCardColumnSpan(
+                                    for: prompt,
+                                    availableColumns: columnCount,
+                                    previewCharacterLimit: settingsStore.promptPreviewCharacterLimit
                                 )
                             )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectPrompt(at: index)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if !isEditingHome { selectPrompt(at: index, from: gridPrompts) }
+                        }
+                        .onDrag {
+                            draggedHomePromptID = isHome && isEditingHome ? prompt.id : nil
+                            return NSItemProvider(object: prompt.id as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: HomePromptDropDelegate(
+                            destinationPromptID: prompt.id,
+                            isEnabled: isHome && isEditingHome,
+                            draggedPromptID: $draggedHomePromptID,
+                            move: settingsStore.moveHomePrompt
+                        ))
+                        .overlay(alignment: .bottomTrailing) {
+                            if isHome && isEditingHome,
+                               let slot = settingsStore.homePromptSlots.first(where: { $0.promptID == prompt.id }) {
+                                TextField("Key", text: Binding(
+                                    get: { slot.key },
+                                    set: { settingsStore.setHomePromptKey($0, for: prompt.id) }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 44)
+                                .padding(8)
                             }
                         }
                     }
-                    .padding(.vertical, 2)
                 }
-                .preference(key: PromptGridColumnCountPreferenceKey.self, value: columnCount)
+                .padding(.vertical, 2)
             }
+            .preference(key: PromptGridColumnCountPreferenceKey.self, value: columnCount)
         }
     }
 
@@ -406,8 +497,8 @@ struct PromptOverlayView: View {
         apply(outcome)
     }
 
-    private func selectPrompt(at index: Int) {
-        guard let outcome = actions.selectPrompt(at: index, visiblePrompts: visiblePrompts) else {
+    private func selectPrompt(at index: Int, from selectablePrompts: [Prompt]? = nil) {
+        guard let outcome = actions.selectPrompt(at: index, visiblePrompts: selectablePrompts ?? visiblePrompts) else {
             return
         }
 
@@ -461,6 +552,8 @@ private struct PromptCardView: View {
     let isSelected: Bool
     let previewCharacterLimit: Int
     let showsPromptTags: Bool
+    let isFavorite: Bool
+    let favoriteAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -475,6 +568,12 @@ private struct PromptCardView: View {
 
                 categoryBadge
                 shortcutBadgeView
+                Button(action: favoriteAction) {
+                    Image(systemName: isFavorite ? "star.fill" : "star")
+                        .foregroundStyle(isFavorite ? .yellow : .secondary)
+                }
+                .buttonStyle(.borderless)
+                .help(isFavorite ? "Remove from home" : "Add to home")
             }
 
             Text(PromptOverlayState.previewText(
@@ -565,6 +664,26 @@ private struct PromptCardView: View {
 
     private var categoryColor: PromptCategoryBadgeColor {
         PromptCategoryBadgeColor(category: prompt.category ?? "")
+    }
+}
+
+private struct HomePromptDropDelegate: DropDelegate {
+    let destinationPromptID: Prompt.ID
+    let isEnabled: Bool
+    @Binding var draggedPromptID: Prompt.ID?
+    let move: (Prompt.ID, Prompt.ID) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard isEnabled,
+              let draggedPromptID,
+              draggedPromptID != destinationPromptID
+        else { return }
+        move(draggedPromptID, destinationPromptID)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedPromptID = nil
+        return isEnabled
     }
 }
 
