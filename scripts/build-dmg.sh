@@ -10,10 +10,22 @@ VERSION="$(plutil -extract CFBundleShortVersionString raw "$ROOT_DIR/Packaging/I
 DMG_PATH="${DMG_PATH:-$DIST_DIR/PromptPaster-$VERSION.dmg}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 NOTARIZE="${NOTARIZE:-0}"
+NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-}"
 
-if [ "$NOTARIZE" = "1" ] && [ -z "$CODESIGN_IDENTITY" ]; then
-    echo "NOTARIZE=1 requires CODESIGN_IDENTITY so the app is signed before submission." >&2
-    exit 1
+notary_args=()
+if [ "$NOTARIZE" = "1" ]; then
+    if [ -z "$CODESIGN_IDENTITY" ]; then
+        echo "NOTARIZE=1 requires CODESIGN_IDENTITY so the app is signed before submission." >&2
+        exit 1
+    fi
+    if [ -n "$NOTARY_KEYCHAIN_PROFILE" ]; then
+        notary_args=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+    elif [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && [ -n "${APP_SPECIFIC_PASSWORD:-}" ]; then
+        notary_args=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APP_SPECIFIC_PASSWORD")
+    else
+        echo "NOTARIZE=1 requires NOTARY_KEYCHAIN_PROFILE or APPLE_ID, APPLE_TEAM_ID, and APP_SPECIFIC_PASSWORD." >&2
+        exit 1
+    fi
 fi
 
 CONFIGURATION=release "$ROOT_DIR/scripts/build-app.sh"
@@ -75,19 +87,14 @@ if [ -n "$CODESIGN_IDENTITY" ]; then
 fi
 
 if [ "$NOTARIZE" = "1" ]; then
-    if [ -z "${APPLE_ID:-}" ] || [ -z "${APPLE_TEAM_ID:-}" ] || [ -z "${APP_SPECIFIC_PASSWORD:-}" ]; then
-        echo "NOTARIZE=1 requires APPLE_ID, APPLE_TEAM_ID, and APP_SPECIFIC_PASSWORD." >&2
-        exit 1
-    fi
-
-    xcrun notarytool submit "$DMG_PATH" \
-        --apple-id "$APPLE_ID" \
-        --team-id "$APPLE_TEAM_ID" \
-        --password "$APP_SPECIFIC_PASSWORD" \
-        --wait
+    xcrun notarytool submit "$DMG_PATH" "${notary_args[@]}" --wait
     xcrun stapler staple "$DMG_PATH"
 fi
 
-"$ROOT_DIR/scripts/validate-release-package.sh" "$DMG_PATH"
+if [ "$NOTARIZE" = "1" ]; then
+    "$ROOT_DIR/scripts/validate-release-package.sh" "$DMG_PATH" --expect-notarized
+else
+    "$ROOT_DIR/scripts/validate-release-package.sh" "$DMG_PATH"
+fi
 
 echo "Built $DMG_PATH"

@@ -131,7 +131,27 @@ For a signed release, provide a Developer ID Application identity:
 CODESIGN_IDENTITY="Developer ID Application: Example Name (TEAMID)" scripts/build-dmg.sh
 ```
 
-For notarization, also provide Apple account credentials and set `NOTARIZE=1`:
+For local notarization, store credentials in macOS Keychain once. Omit the
+password flag so `notarytool` prompts securely for an app-specific password:
+
+```bash
+xcrun notarytool store-credentials prompt-paster-notary \
+  --apple-id "developer@example.com" --team-id "TEAMID"
+```
+
+Then build using the saved profile:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Example Name (TEAMID)" \
+NOTARY_KEYCHAIN_PROFILE=prompt-paster-notary \
+NOTARIZE=1 scripts/build-dmg.sh
+```
+
+The Apple Developer Program membership must be active, and the Developer ID
+Application certificate must be installed with its private key in the signing
+Mac's Keychain. Apple account passwords and private keys must stay outside Git.
+
+For CI, the existing environment-variable credentials are also supported:
 
 ```bash
 CODESIGN_IDENTITY="Developer ID Application: Example Name (TEAMID)" \
@@ -148,8 +168,12 @@ The app signing step uses `Packaging/Entitlements.plist`. The entitlements file
 is intentionally empty for now because Prompt Paster is a local
 clipboard/menu-bar app with no sandbox, network, or Apple Events requirements.
 
-When `NOTARIZE=1` is set, `CODESIGN_IDENTITY` is required and the script fails
-before building if it is missing.
+When `NOTARIZE=1` is set, the signing identity and either a Keychain profile or
+all three credential variables are required before building. A Keychain profile
+takes precedence when both are provided. The script staples Apple's ticket to
+the DMG and verifies the ticket and Gatekeeper acceptance of both the DMG and a
+quarantined app copy before reporting success. Existing unsigned downloads must
+be replaced with the newly signed and notarized artifact.
 
 ## GitHub Releases
 
