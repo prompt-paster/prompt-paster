@@ -16,6 +16,9 @@ Created by [Shay Palachy Affek](http://www.shaypalachy.com/).
 
 ## Current Status
 
+The v0.2.0 download targets Apple silicon on macOS 14 or newer and is signed
+with Developer ID and notarized by Apple.
+
 The repository currently contains a native menu-bar utility with the core v1
 selection loop:
 
@@ -27,6 +30,9 @@ selection loop:
 - configurable fallback global hotkey, defaulting to `Control+Option+Space`
 - configurable double-modifier trigger support, defaulting to double-Control
 - settings and launch-at-login wiring
+- GitHub Markdown/text prompt sources with Keychain-held credentials
+- an optional starred-prompt home screen with editable order and letter keys
+- local composite prompts that concatenate local and GitHub-backed prompts
 - local `.app` and DMG release packaging
 
 Auto-paste is intentionally out of scope for v1. Selecting a prompt copies the
@@ -165,8 +171,8 @@ scripts/build-dmg.sh
 The Developer ID signing path signs the app bundle with hardened runtime
 options, then signs the generated DMG container before optional notarization.
 The app signing step uses `Packaging/Entitlements.plist`. The entitlements file
-is intentionally empty for now because Prompt Paster is a local
-clipboard/menu-bar app with no sandbox, network, or Apple Events requirements.
+is intentionally empty: the clipboard, menu-bar, and GitHub source features
+operate without App Sandbox or Apple Events entitlements.
 
 When `NOTARIZE=1` is set, the signing identity and either a Keychain profile or
 all three credential variables are required before building. A Keychain profile
@@ -234,11 +240,28 @@ The fallback hotkey defaults to `Control+Option+Space`. The fallback hotkey,
 double-modifier trigger, and overlay font size can be changed from the app
 settings window.
 
+## GitHub Sources, Home, and Composite Prompts
+
+Use **Edit Prompt Library → Sources & Composites** to configure a Markdown,
+`.markdown`, or `.txt` file from any GitHub repository, branch, commit, or tag.
+Prompt Paster refreshes configured files before showing the overlay, so the
+selectable prompt uses the current GitHub content. Add a fine-grained token
+with read-only Contents access in **Settings → GitHub access** for private
+repositories; it is stored in the macOS Keychain, never in `prompts.json`.
+
+Star a card to add it to the default home screen. The pencil in the overlay
+enables drag-to-reorder and per-card letter editing; start typing in search to
+switch to dynamic search results. Composite prompts are local definitions that
+join component prompt IDs in order. See the
+[source, home, and composite design](docs/prompt-sources-home-composites.md)
+for the precise ID convention and failure behavior.
+
 ## Planning Docs
 
 - [Website](https://prompt-paster.github.io/prompt-paster/)
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [GitHub sources, home, and composites](docs/prompt-sources-home-composites.md)
 - [Review recommendations](docs/review-recommendations.md)
 
 ## Credits
