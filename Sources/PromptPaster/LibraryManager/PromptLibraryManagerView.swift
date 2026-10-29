@@ -92,7 +92,7 @@ struct PromptLibraryManagerView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("GitHub prompt sources")
                 .font(.title2)
-            Text("Each source downloads one Markdown or plain-text file from GitHub whenever the overlay opens. A GitHub token is stored separately in Settings > GitHub access.")
+            Text("Each source reads a Markdown or text file when the overlay opens. Choose GitHub CLI sign-in to reuse gh auth login, a public repository, or the app token from Settings > GitHub access.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -169,6 +169,18 @@ private struct GitHubSourceEditor: View {
             GridRow {
                 Text("File")
                 TextField("prompts/rules.md", text: $source.path)
+            }
+            GridRow {
+                Text("Access")
+                Picker("Access", selection: $source.authentication) {
+                    ForEach(GitHubSourceAuthentication.allCases) { Text($0.title).tag($0) }
+                }.labelsHidden()
+            }
+            GridRow {
+                Text("Content")
+                Picker("Content", selection: $source.content) {
+                    ForEach(GitHubSourceContent.allCases) { Text($0.title).tag($0) }
+                }.labelsHidden()
             }
             GridRow {
                 Text("Category")

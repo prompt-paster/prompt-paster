@@ -418,6 +418,14 @@ final class SettingsStore: ObservableObject {
         homePromptSlots.contains { $0.promptID == promptID }
     }
 
+    func reloadHomeConfiguration() {
+        defaults.synchronize()
+        let slots = Self.loadHomePromptSlots(from: defaults)
+        if homePromptSlots != slots { homePromptSlots = slots }
+        let enabled = defaults.object(forKey: Keys.homeScreenEnabled) as? Bool ?? true
+        if homeScreenEnabled != enabled { homeScreenEnabled = enabled }
+    }
+
     func toggleFavorite(promptID: Prompt.ID) {
         if homePromptSlots.contains(where: { $0.promptID == promptID }) {
             homePromptSlots.removeAll { $0.promptID == promptID }

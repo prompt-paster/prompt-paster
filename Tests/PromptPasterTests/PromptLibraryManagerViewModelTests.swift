@@ -129,6 +129,38 @@ final class PromptLibraryManagerViewModelTests: XCTestCase {
         )
     }
 
+    func testAgentEditDoesNotLetDirtyEditorOverwriteNewLibraryAfterReload() throws {
+        let store = try makeLoadedStore(prompts: [Prompt(id: "one", title: "One", body: "Body")])
+        let editor = PromptLibraryManagerViewModel(promptStore: store)
+        editor.addGitHubSource()
+        let patch = Data(#"{"prompts":[{"id":"one","title":"Agent title"}]}"#.utf8)
+        _ = try LibraryPatch.apply(patch, to: store.libraryURL, dryRun: false)
+        XCTAssertTrue(store.reloadIfChanged())
+        editor.saveConfigurations()
+        XCTAssertTrue(editor.errorMessage?.contains("changed outside") == true)
+        XCTAssertEqual(store.library?.prompts.first?.title, "Agent title")
+        editor.discardChanges()
+        XCTAssertEqual(editor.githubSources, [])
+        editor.addGitHubSource()
+        editor.saveConfigurations()
+        XCTAssertNil(editor.errorMessage)
+        XCTAssertEqual(store.library?.githubSources.count, 1)
+    }
+
+    func testCleanEditorCanSaveAfterAgentReload() throws {
+        let store = try makeLoadedStore(prompts: [Prompt(id: "one", title: "One", body: "Body")])
+        let editor = PromptLibraryManagerViewModel(promptStore: store)
+        _ = try LibraryPatch.apply(Data(#"{"prompts":[{"id":"one","title":"Agent title"}]}"#.utf8), to: store.libraryURL, dryRun: false)
+        XCTAssertTrue(store.reloadIfChanged())
+        XCTAssertEqual(editor.draft?.title, "Agent title")
+        var draft = try XCTUnwrap(editor.draft)
+        draft.body = "Edited after reload"
+        editor.updateDraft(draft)
+        editor.saveSelectedPrompt()
+        XCTAssertNil(editor.errorMessage)
+        XCTAssertEqual(store.library?.prompts.first?.body, "Edited after reload")
+    }
+
     private func makeLoadedStore(prompts: [Prompt]) throws -> PromptStore {
         let rootURL = makeTemporaryDirectory()
         let seedURL = rootURL.appendingPathComponent("SeedPrompts.json")

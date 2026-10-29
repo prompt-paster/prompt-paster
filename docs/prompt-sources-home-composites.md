@@ -50,3 +50,6 @@ Use **Edit Prompt Library → Sources & Composites** to add GitHub Markdown/text
 files or composite definitions. A GitHub source with ID `team-rules` becomes
 the dynamic prompt ID `github-team-rules`; that is the ID a composite should
 list as a component.
+
+For per-source GitHub CLI authentication, paste-ready extraction, and safe headless
+library management added in 0.3.0, see [agent configuration](agent-configuration.md).

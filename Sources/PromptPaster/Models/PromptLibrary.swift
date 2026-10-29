@@ -20,6 +20,10 @@ struct PromptLibrary: Codable, Equatable {
         self.composites = composites
     }
 
+    var configuredPromptIDs: Set<String> {
+        Set(prompts.map(\.id) + githubSources.map(\.promptID) + composites.map(\.id))
+    }
+
     private enum CodingKeys: String, CodingKey {
         case version, prompts, githubSources, composites
     }
@@ -130,8 +134,15 @@ extension PromptLibrary {
             guard ["md", "markdown", "txt"].contains(extensionName) else {
                 throw PromptSourceValidationError.unsupportedFile(source.id)
             }
+            guard source.hasValidRepositoryPath else {
+                throw PromptSourceValidationError.invalidRepositoryPath(source.id)
+            }
+            guard ids.insert(source.promptID).inserted else {
+                throw PromptSourceValidationError.duplicatePromptID(source.promptID)
+            }
         }
 
+        let componentIDs = ids
         for composite in composites {
             guard Self.isValidSlug(composite.id) else {
                 throw PromptSourceValidationError.invalidCompositeID(composite.id)
@@ -141,6 +152,12 @@ extension PromptLibrary {
             }
             guard !composite.componentPromptIDs.isEmpty else {
                 throw PromptSourceValidationError.emptyCompositeComponents(composite.id)
+            }
+            guard ids.insert(composite.id).inserted else {
+                throw PromptSourceValidationError.duplicatePromptID(composite.id)
+            }
+            for component in composite.componentPromptIDs where !componentIDs.contains(component) {
+                throw PromptSourceValidationError.unavailableComponent(composite.id, component)
             }
         }
 

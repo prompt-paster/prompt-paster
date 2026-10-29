@@ -16,7 +16,7 @@ Created by [Shay Palachy Affek](http://www.shaypalachy.com/).
 
 ## Current Status
 
-The v0.2.0 download targets Apple silicon on macOS 14 or newer and is signed
+The v0.3.0 download targets Apple silicon on macOS 14 or newer and is signed
 with Developer ID and notarized by Apple.
 
 The repository currently contains a native menu-bar utility with the core v1
@@ -30,7 +30,8 @@ selection loop:
 - configurable fallback global hotkey, defaulting to `Control+Option+Space`
 - configurable double-modifier trigger support, defaulting to double-Control
 - settings and launch-at-login wiring
-- GitHub Markdown/text prompt sources with Keychain-held credentials
+- live GitHub Markdown/text sources with GitHub CLI sign-in or Keychain-held credentials
+- agent CLI for safe library merges, validation, refresh, and complete prompt rendering
 - an optional starred-prompt home screen with editable order and letter keys
 - local composite prompts that concatenate local and GitHub-backed prompts
 - local `.app` and DMG release packaging
@@ -96,7 +97,7 @@ scripts/build-dmg.sh
 The script creates:
 
 ```text
-dist/PromptPaster-0.1.0.dmg
+dist/PromptPaster-0.3.0.dmg
 ```
 
 The DMG contains:
@@ -110,14 +111,14 @@ README.txt
 To validate an existing artifact:
 
 ```bash
-scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg
+scripts/validate-release-package.sh dist/PromptPaster-0.3.0.dmg
 ```
 
 To also launch an installed-style copy of the app from the artifact and then
 terminate it:
 
 ```bash
-scripts/validate-release-package.sh dist/PromptPaster-0.1.0.dmg --launch-smoke
+scripts/validate-release-package.sh dist/PromptPaster-0.3.0.dmg --launch-smoke
 ```
 
 ## Signing and Notarization
@@ -188,7 +189,7 @@ DMG on a GitHub-hosted macOS runner, uploads the DMG as a workflow artifact, and
 creates or updates a GitHub Release with the DMG attached.
 
 The workflow uploads both a versioned artifact, such as
-`PromptPaster-0.1.0.dmg`, and a stable `PromptPaster.dmg` alias. The stable
+`PromptPaster-0.3.0.dmg`, and a stable `PromptPaster.dmg` alias. The stable
 asset keeps the website download URL version-independent:
 
 ```text
@@ -245,9 +246,25 @@ settings window.
 Use **Edit Prompt Library → Sources & Composites** to configure a Markdown,
 `.markdown`, or `.txt` file from any GitHub repository, branch, commit, or tag.
 Prompt Paster refreshes configured files before showing the overlay, so the
-selectable prompt uses the current GitHub content. Add a fine-grained token
-with read-only Contents access in **Settings → GitHub access** for private
-repositories; it is stored in the macOS Keychain, never in `prompts.json`.
+selectable prompt uses the current GitHub content. For private repositories,
+choose **GitHub CLI sign-in** to reuse `gh auth login`, or add a fine-grained
+read-only Contents token in **Settings → GitHub access** (stored in Keychain).
+Choose **Paste-ready prompt block** for a Markdown document that wraps its
+actual prompt under `## Paste-Ready Prompt`.
+
+Agents can update the library without opening the GUI:
+
+```sh
+PP="/Applications/Prompt Paster.app/Contents/MacOS/PromptPaster"
+"$PP" library example > manifest.json
+# Edit the example's repositories, paths, and component IDs first.
+"$PP" library apply manifest.json --dry-run
+"$PP" library apply manifest.json
+"$PP" library refresh
+```
+
+See [agent configuration](docs/agent-configuration.md) for safe merges, private
+backups, authentication modes, favorites, and complete prompt rendering.
 
 Star a card to add it to the default home screen. The pencil in the overlay
 enables drag-to-reorder and per-card letter editing; start typing in search to
@@ -261,6 +278,7 @@ for the precise ID convention and failure behavior.
 - [Website](https://prompt-paster.github.io/prompt-paster/)
 - [Design, architecture, and spec](docs/design-architecture-spec.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [Agent configuration and CLI](docs/agent-configuration.md)
 - [GitHub sources, home, and composites](docs/prompt-sources-home-composites.md)
 - [Review recommendations](docs/review-recommendations.md)
 

@@ -9,6 +9,20 @@ protocol GitHubPromptSourceFetching: Sendable {
 }
 
 struct GitHubPromptSourceService: GitHubPromptSourceFetching, Sendable {
+    private let cli: any GitHubCLIReading
+    private let session: URLSession
+
+    init(cli: any GitHubCLIReading = GitHubCLIReader(), session: URLSession? = nil) {
+        self.cli = cli
+        if let session { self.session = session } else {
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.timeoutIntervalForRequest = 20
+            configuration.timeoutIntervalForResource = 25
+            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            self.session = URLSession(configuration: configuration, delegate: NoGitHubRedirects(), delegateQueue: nil)
+        }
+    }
+
     private struct ContentsResponse: Decodable {
         let content: String
         let encoding: String
@@ -24,7 +38,7 @@ struct GitHubPromptSourceService: GitHubPromptSourceFetching, Sendable {
                     do {
                         return .success(try await fetchPrompt(for: source, token: token))
                     } catch {
-                        return .failure(error)
+                        return .failure(GitHubPromptSourceServiceError.sourceFailure(source.title, error.localizedDescription))
                     }
                 }
             }
@@ -42,6 +56,9 @@ struct GitHubPromptSourceService: GitHubPromptSourceFetching, Sendable {
     }
 
     private func fetchPrompt(for source: GitHubPromptSource, token: String?) async throws -> Prompt {
+        guard source.hasValidRepositoryPath else {
+            throw PromptSourceValidationError.invalidRepositoryPath(source.id)
+        }
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.github.com"
@@ -51,25 +68,34 @@ struct GitHubPromptSourceService: GitHubPromptSourceFetching, Sendable {
             throw GitHubPromptSourceServiceError.invalidURL(source.title)
         }
 
-        var request = URLRequest(url: url)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("PromptPaster", forHTTPHeaderField: "User-Agent")
-        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        if let token, !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let data: Data
+        if source.authentication == .githubCLI {
+            let endpoint = components.percentEncodedPath + "?" + (components.percentEncodedQuery ?? "")
+            data = try await cli.read(endpoint: endpoint)
+        } else {
+            var request = URLRequest(url: url)
+            request.httpShouldHandleCookies = false
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("PromptPaster", forHTTPHeaderField: "User-Agent")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            if source.authentication == .storedToken, let token, !token.isEmpty {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubPromptSourceServiceError.invalidResponse(source.title)
-        }
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            throw GitHubPromptSourceServiceError.httpStatus(
-                source: source.title,
-                statusCode: httpResponse.statusCode
-            )
-        }
+            let (responseData, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw GitHubPromptSourceServiceError.invalidResponse(source.title)
+            }
+            guard (200..<300).contains(httpResponse.statusCode) else {
+                throw GitHubPromptSourceServiceError.httpStatus(
+                    source: source.title,
+                    statusCode: httpResponse.statusCode
+                )
+            }
 
+            data = responseData
+        }
+        guard data.count <= 4 * 1_024 * 1_024 else { throw GitHubCLIReader.CommandError.outputTooLarge }
         let contents = try JSONDecoder().decode(ContentsResponse.self, from: data)
         guard contents.encoding == "base64",
               let decoded = Data(base64Encoded: contents.content, options: .ignoreUnknownCharacters),
@@ -78,15 +104,28 @@ struct GitHubPromptSourceService: GitHubPromptSourceFetching, Sendable {
             throw GitHubPromptSourceServiceError.invalidContent(source.title)
         }
 
+        let extracted = try PromptContentExtractor.extract(body, mode: source.content)
+        guard !extracted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw GitHubPromptSourceServiceError.invalidContent(source.title)
+        }
         return Prompt(
             id: source.promptID,
             title: source.title,
             category: source.category,
-            body: body,
+            body: extracted,
             tags: source.tags + ["github", source.owner, source.repository],
             updatedAt: Date()
         )
     }
+}
+
+private final class NoGitHubRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) { completionHandler(nil) }
 }
 
 enum GitHubPromptSourceServiceError: Error, LocalizedError {
@@ -94,9 +133,11 @@ enum GitHubPromptSourceServiceError: Error, LocalizedError {
     case invalidResponse(String)
     case httpStatus(source: String, statusCode: Int)
     case invalidContent(String)
+    case sourceFailure(String, String)
 
     var errorDescription: String? {
         switch self {
+        case .sourceFailure(let title, let reason): "GitHub source \"\(title)\": \(reason)"
         case .invalidURL(let title): "GitHub source \"\(title)\" has an invalid URL."
         case .invalidResponse(let title): "GitHub source \"\(title)\" returned an invalid response."
         case .httpStatus(let source, let statusCode):
