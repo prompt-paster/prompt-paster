@@ -156,8 +156,9 @@ struct PromptOverlayView: View {
         .onChange(of: prompts) { _, _ in
             keepCategoryVisible()
             keepSelectionVisible()
-            promptUsageStore.pruneKeepingPromptIDs(Set(prompts.map(\.id)))
-            settingsStore.pruneHomePrompts(keepingPromptIDs: Set(prompts.map(\.id)))
+            let configuredIDs = promptStore.library?.configuredPromptIDs ?? []
+            promptUsageStore.pruneKeepingPromptIDs(configuredIDs)
+            settingsStore.pruneHomePrompts(keepingPromptIDs: configuredIDs)
         }
         .onChange(of: settingsStore.promptOrderingMode) { _, _ in
             keepSelectionVisible()

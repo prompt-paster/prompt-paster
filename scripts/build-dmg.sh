@@ -11,6 +11,7 @@ DMG_PATH="${DMG_PATH:-$DIST_DIR/PromptPaster-$VERSION.dmg}"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 NOTARIZE="${NOTARIZE:-0}"
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-}"
+NOTARY_KEYCHAIN_PATH="${NOTARY_KEYCHAIN_PATH:-}"
 
 notary_args=()
 if [ "$NOTARIZE" = "1" ]; then
@@ -20,6 +21,9 @@ if [ "$NOTARIZE" = "1" ]; then
     fi
     if [ -n "$NOTARY_KEYCHAIN_PROFILE" ]; then
         notary_args=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+        if [ -n "$NOTARY_KEYCHAIN_PATH" ]; then
+            notary_args+=(--keychain "$NOTARY_KEYCHAIN_PATH")
+        fi
     elif [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && [ -n "${APP_SPECIFIC_PASSWORD:-}" ]; then
         notary_args=(--apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APP_SPECIFIC_PASSWORD")
     else

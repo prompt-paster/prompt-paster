@@ -223,11 +223,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
     }
 
     private func prunePromptUsageStats() {
-        let promptIDs = Set(promptStore.effectivePrompts.map(\.id))
+        let promptIDs = promptStore.library?.configuredPromptIDs ?? []
         promptUsageStore.pruneKeepingPromptIDs(promptIDs)
     }
 
     private func refreshSourcesAndShow() {
+        settingsStore.reloadHomeConfiguration()
         Task { [weak self] in
             guard let self else { return }
             await self.promptStore.refreshGitHubSources(token: self.githubCredentialStore.token)

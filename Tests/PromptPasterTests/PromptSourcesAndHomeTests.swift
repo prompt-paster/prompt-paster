@@ -92,6 +92,43 @@ final class PromptSourcesAndHomeTests: XCTestCase {
         XCTAssertEqual(reloaded.homePromptSlots, store.homePromptSlots)
     }
 
+    func testRefreshAutomaticallyReloadsAgentEditsAndKeepsUnavailableFavoriteIDs() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let seed = root.appendingPathComponent("seed.json")
+        try writeLibrary(PromptLibrary(prompts: [Prompt(id: "local", title: "Local", body: "Old")]), to: seed)
+        let store = PromptStore(applicationSupportURL: root.appendingPathComponent("Support"), seedURL: seed,
+                                githubSourceFetcher: FakeGitHubSourceFetcher(prompts: []))
+        XCTAssertTrue(store.load().didSucceed)
+        let patch = Data(#"{"prompts":[{"id":"local","body":"Agent update"}],"githubSources":[{"id":"remote","title":"Remote","owner":"example","repository":"wiki","path":"rules.md"}],"composites":[{"id":"combined","title":"Combined","componentPromptIDs":["local","github-remote"]}]}"#.utf8)
+        _ = try LibraryPatch.apply(patch, to: store.libraryURL, dryRun: false)
+        await store.refreshGitHubSources(token: nil)
+        XCTAssertEqual(store.effectivePrompts.first?.body, "Agent update")
+        XCTAssertEqual(store.effectivePrompts.map(\.id), ["local"])
+        let settings = SettingsStore(defaults: makeDefaults(), loginItemManager: HomeTestLoginItemManager())
+        settings.toggleFavorite(promptID: "combined")
+        settings.pruneHomePrompts(keepingPromptIDs: store.library?.configuredPromptIDs ?? [])
+        XCTAssertTrue(settings.isFavorite(promptID: "combined"))
+    }
+
+    func testLateSourceRefreshCannotReplaceNewerConfiguration() async throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let seed = root.appendingPathComponent("seed.json")
+        let source = GitHubPromptSource(id: "remote", title: "Remote", owner: "example", repository: "wiki", path: "rules.md")
+        try writeLibrary(PromptLibrary(prompts: [], githubSources: [source]), to: seed)
+        let fetcher = SuspendedSourceFetcher()
+        let store = PromptStore(applicationSupportURL: root.appendingPathComponent("Support"), seedURL: seed, githubSourceFetcher: fetcher)
+        XCTAssertTrue(store.load().didSucceed)
+        let first = Task { await store.refreshGitHubSources(token: nil) }
+        while !(await fetcher.started) { await Task.yield() }
+        try store.save(PromptLibrary(prompts: [Prompt(id: "local", title: "Local", body: "New library")]))
+        await fetcher.finish()
+        await first.value
+        XCTAssertEqual(store.effectivePrompts.map(\.id), ["local"])
+        XCTAssertFalse(store.isRefreshingSources)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("PromptPasterSourceTests-\(UUID().uuidString)", isDirectory: true)
@@ -133,4 +170,14 @@ private struct HomeTestLoginItemManager: LoginItemManaging {
     let launchAtLoginStatus: LaunchAtLoginStatus = .disabled
     func setLaunchAtLoginEnabled(_: Bool) throws {}
     func openLoginItemsSettings() {}
+}
+
+private actor SuspendedSourceFetcher: GitHubPromptSourceFetching {
+    var started = false
+    var continuation: CheckedContinuation<Void, Never>?
+    func fetchPrompts(for sources: [GitHubPromptSource], token: String?) async -> (prompts: [Prompt], errors: [String]) {
+        await withCheckedContinuation { continuation in self.continuation = continuation; started = true }
+        return ([Prompt(id: "github-remote", title: "Remote", body: "Stale")], [])
+    }
+    func finish() { continuation?.resume(); continuation = nil }
 }

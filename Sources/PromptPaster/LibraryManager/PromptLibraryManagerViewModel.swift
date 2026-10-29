@@ -17,11 +17,17 @@ final class PromptLibraryManagerViewModel: ObservableObject {
     private let promptStore: PromptStore
     private var originalDraft: PromptLibraryDraft?
     private var promptStoreCancellable: AnyCancellable?
+    private var editorFileSignature: PromptLibraryFileSignature?
+    private var originalSources: [GitHubPromptSource] = []
+    private var originalComposites: [CompositePromptDefinition] = []
 
     init(promptStore: PromptStore) {
         self.promptStore = promptStore
         self.githubSources = promptStore.library?.githubSources ?? []
         self.composites = promptStore.library?.composites ?? []
+        self.editorFileSignature = promptStore.libraryFileSignature
+        self.originalSources = self.githubSources
+        self.originalComposites = self.composites
         selectedPromptID = promptStore.library?.prompts.first?.id
         refreshDraft()
         promptStoreCancellable = promptStore.$library.sink { [weak self] library in
@@ -125,7 +131,8 @@ final class PromptLibraryManagerViewModel: ObservableObject {
                 in: library,
                 with: draft
             )
-            _ = try promptStore.save(updatedLibrary)
+            _ = try promptStore.save(updatedLibrary, expectedSignature: editorFileSignature)
+            editorFileSignature = promptStore.libraryFileSignature
             self.statusMessage = "Saved prompt library."
             self.errorMessage = nil
             refreshDraft()
@@ -151,6 +158,11 @@ final class PromptLibraryManagerViewModel: ObservableObject {
     }
 
     func discardChanges() {
+        githubSources = promptStore.library?.githubSources ?? []
+        composites = promptStore.library?.composites ?? []
+        originalSources = githubSources
+        originalComposites = composites
+        editorFileSignature = promptStore.libraryFileSignature
         refreshDraft()
         errorMessage = nil
         statusMessage = "Discarded unsaved changes."
@@ -192,7 +204,10 @@ final class PromptLibraryManagerViewModel: ObservableObject {
                 prompts: library.prompts,
                 githubSources: githubSources,
                 composites: composites
-            ))
+            ), expectedSignature: editorFileSignature)
+            editorFileSignature = promptStore.libraryFileSignature
+            originalSources = githubSources
+            originalComposites = composites
             statusMessage = "Saved GitHub sources and composite prompts. They refresh the next time Prompt Paster opens."
             errorMessage = nil
         } catch {
@@ -228,7 +243,7 @@ final class PromptLibraryManagerViewModel: ObservableObject {
     private func handleLibraryChange(_ library: PromptLibrary?) {
         objectWillChange.send()
 
-        guard !isDirty else {
+        guard !isDirty, githubSources == originalSources, composites == originalComposites else {
             errorMessage = "Prompt library changed while this editor has unsaved changes. Save or discard changes before continuing."
             return
         }
@@ -236,6 +251,9 @@ final class PromptLibraryManagerViewModel: ObservableObject {
         let prompts = library?.prompts ?? []
         githubSources = library?.githubSources ?? []
         composites = library?.composites ?? []
+        originalSources = githubSources
+        originalComposites = composites
+        editorFileSignature = promptStore.libraryFileSignature
         if let selectedPromptID, prompts.contains(where: { $0.id == selectedPromptID }) {
             refreshDraft(from: prompts)
         } else {
@@ -253,7 +271,7 @@ final class PromptLibraryManagerViewModel: ObservableObject {
 
     @discardableResult
     private func canDiscardCurrentDraft(action: String = "Save or discard changes before switching prompts.") -> Bool {
-        guard isDirty else {
+        guard isDirty || githubSources != originalSources || composites != originalComposites else {
             return true
         }
         errorMessage = action

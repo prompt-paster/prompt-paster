@@ -36,6 +36,7 @@ final class PromptStore: ObservableObject {
     private let githubSourceFetcher: GitHubPromptSourceFetching
     private var remotePrompts: [Prompt] = []
     private var sourceRefreshErrors: [String] = []
+    private var sourceRefreshGeneration = 0
 
     init(
         applicationSupportURL: URL? = nil,
@@ -63,13 +64,15 @@ final class PromptStore: ObservableObject {
             let data = try Data(contentsOf: libraryURL)
             let decoded = try PromptLibraryCoding.makeDecoder().decode(PromptLibrary.self, from: data)
             let loadResult = try decoded.validatedForLoading()
+            libraryFileSignature = Self.fileSignature(for: data)
             library = loadResult.library
             validation = loadResult.validation
             remotePrompts = []
+            sourceRefreshGeneration += 1
+            isRefreshingSources = false
             sourceRefreshErrors = []
             sourceStatusMessages = []
             rebuildEffectivePrompts()
-            libraryFileSignature = Self.fileSignature(for: data)
             lastErrorMessage = nil
             return PromptStoreReloadResult(
                 library: loadResult.library,
@@ -89,25 +92,37 @@ final class PromptStore: ObservableObject {
     }
 
     @discardableResult
-    func save(_ library: PromptLibrary) throws -> PromptLibraryValidation {
+    func save(_ library: PromptLibrary, expectedSignature: PromptLibraryFileSignature? = nil) throws -> PromptLibraryValidation {
         try ensureLibraryFileExists()
-        let currentSignature = try currentLibraryFileSignature()
-        if let libraryFileSignature, currentSignature != libraryFileSignature {
-            throw PromptStoreError.libraryChangedOnDisk
-        }
+        return try LibraryFileAccess.withLock(at: libraryURL) {
+            let currentSignature = try currentLibraryFileSignature()
+            if let baseline = expectedSignature ?? libraryFileSignature, currentSignature != baseline {
+                throw PromptStoreError.libraryChangedOnDisk
+            }
 
-        let validation = try library.validated()
-        let data = try PromptLibraryCoding.makeEncoder().encode(library)
-        try data.write(to: libraryURL, options: .atomic)
-        self.library = library
-        self.validation = validation
-        remotePrompts = []
-        sourceRefreshErrors = []
-        sourceStatusMessages = []
-        rebuildEffectivePrompts()
-        libraryFileSignature = Self.fileSignature(for: data)
-        lastErrorMessage = nil
-        return validation
+            let validation = try library.validated()
+            let data = try PromptLibraryCoding.makeEncoder().encode(library)
+            try LibraryFileAccess.write(data, to: libraryURL)
+            libraryFileSignature = Self.fileSignature(for: data)
+            self.library = library
+            self.validation = validation
+            remotePrompts = []
+            sourceRefreshGeneration += 1
+            isRefreshingSources = false
+            sourceRefreshErrors = []
+            sourceStatusMessages = []
+            rebuildEffectivePrompts()
+            lastErrorMessage = nil
+            return validation
+        }
+    }
+
+    @discardableResult
+    func reloadIfChanged() -> Bool {
+        guard let signature = try? currentLibraryFileSignature(), signature == libraryFileSignature else {
+            return reload().didSucceed
+        }
+        return false
     }
 
     func recordError(_ error: Error) {
@@ -115,6 +130,7 @@ final class PromptStore: ObservableObject {
     }
 
     func refreshGitHubSources(token: String?) async {
+        reloadIfChanged()
         guard let library else { return }
         guard !library.githubSources.isEmpty else {
             remotePrompts = []
@@ -124,7 +140,10 @@ final class PromptStore: ObservableObject {
         }
 
         isRefreshingSources = true
+        sourceRefreshGeneration += 1
+        let generation = sourceRefreshGeneration
         let result = await githubSourceFetcher.fetchPrompts(for: library.githubSources, token: token)
+        guard generation == sourceRefreshGeneration else { return }
         remotePrompts = result.prompts
         sourceRefreshErrors = result.errors
         rebuildEffectivePrompts()
@@ -151,15 +170,17 @@ final class PromptStore: ObservableObject {
             withIntermediateDirectories: true
         )
 
-        guard !fileManager.fileExists(atPath: libraryURL.path) else {
-            return
-        }
+        try LibraryFileAccess.withLock(at: libraryURL) {
+            guard !fileManager.fileExists(atPath: libraryURL.path) else {
+                return
+            }
 
-        guard let seedURL else {
-            throw PromptStoreError.seedResourceMissing
-        }
+            guard let seedURL else {
+                throw PromptStoreError.seedResourceMissing
+            }
 
-        try fileManager.copyItem(at: seedURL, to: libraryURL)
+            try LibraryFileAccess.write(Data(contentsOf: seedURL), to: libraryURL)
+        }
     }
 
     private func currentLibraryFileSignature() throws -> PromptLibraryFileSignature {
