@@ -1,6 +1,6 @@
 # Agent-managed prompt libraries
 
-Prompt Paster 0.3.0 includes a headless CLI in the installed app. It uses the
+Prompt Paster 0.3.1 includes a headless CLI in the installed app. It uses the
 same JSON library, GitHub reader, extraction, and composite resolver as the GUI.
 Library commands never open an overlay or change the clipboard.
 For an agent handoff with the app closed, `--show`, `--edit-library`, and
@@ -147,5 +147,5 @@ with repeatable agent configuration. Existing local prompts, favorites,
 clipboard behavior, and Keychain credentials must survive. Personal repository
 definitions and prompt bodies stay in the local library, outside this public
 repository. Release completion requires a labeled ready PR, passing tests and
-live source comparison, a verified signed/notarized 0.3.0 download, and validation
+live source comparison, a verified signed/notarized 0.3.1 download, and validation
 of the configured local installation.
