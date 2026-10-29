@@ -2,7 +2,10 @@
 
 Prompt Paster 0.3.0 includes a headless CLI in the installed app. It uses the
 same JSON library, GitHub reader, extraction, and composite resolver as the GUI.
-The CLI never opens an overlay or changes the clipboard.
+Library commands never open an overlay or change the clipboard.
+For an agent handoff with the app closed, `--show`, `--edit-library`, and
+`--settings` launch the corresponding GUI view. Reopening the running app also
+shows its overlay when no window is visible.
 
 ```sh
 PP="/Applications/Prompt Paster.app/Contents/MacOS/PromptPaster"

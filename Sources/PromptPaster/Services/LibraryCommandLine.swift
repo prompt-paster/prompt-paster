@@ -16,6 +16,7 @@ enum LibraryCommandLine {
       render ID               Print the complete resolved prompt (fresh GitHub fetch)
       favorites ID ...        Add home favorites (default library only)
     PromptPaster --version | --help
+    GUI startup: PromptPaster --show | --edit-library | --settings
     Private repositories: authentication=githubCLI uses your existing gh auth login.
     apply makes a private backup before changing an existing library. No auto-paste.
     """

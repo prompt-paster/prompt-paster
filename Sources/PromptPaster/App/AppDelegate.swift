@@ -3,6 +3,13 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling {
+    private let launchAction: AppLaunchAction?
+
+    init(launchAction: AppLaunchAction? = nil) {
+        self.launchAction = launchAction
+        super.init()
+    }
+
     private var statusItem: NSStatusItem?
     private let promptStore = PromptStore()
     private let settingsStore = SettingsStore()
@@ -57,6 +64,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, HotkeyTriggerHandling 
         prunePromptUsageStats()
         configureStatusItem()
         startHotkeys()
+        switch launchAction {
+        case .show: refreshSourcesAndShow()
+        case .editLibrary: openLibraryManager()
+        case .settings: openSettings()
+        case nil: break
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { refreshSourcesAndShow() }
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
