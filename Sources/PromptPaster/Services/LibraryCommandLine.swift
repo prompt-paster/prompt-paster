@@ -102,7 +102,7 @@ enum LibraryCommandLine {
                 guard !args.isEmpty else { throw LibraryCommandError.message("favorites requires one or more prompt IDs.") }
                 let known = Set(library.prompts.map(\.id) + library.githubSources.map(\.promptID) + library.composites.map(\.id))
                 guard args.allSatisfy(known.contains) else { throw LibraryCommandError.message("Unknown favorite ID. Use library list.") }
-                let defaults = UserDefaults(suiteName: "com.shaypal5.prompt-paster")!
+                let defaults = try appDefaults()
                 let settings = SettingsStore(defaults: defaults)
                 let additional = Set(args).subtracting(settings.homePromptSlots.map(\.promptID))
                 guard additional.count + settings.homePromptSlots.count <= PromptHomeConfiguration.maximumPromptCount else {
@@ -144,6 +144,18 @@ enum LibraryCommandLine {
             }
             return 1
         }
+    }
+
+    // A bundle cannot add its own identifier as an additional suite. The installed
+    // executable already uses the app domain through .standard; SwiftPM binaries
+    // need the named suite to reach that same domain.
+    static func appDefaults(bundleIdentifier: String? = Bundle.main.bundleIdentifier) throws -> UserDefaults {
+        let appIdentifier = "com.shaypal5.prompt-paster"
+        if bundleIdentifier == appIdentifier { return .standard }
+        guard let defaults = UserDefaults(suiteName: appIdentifier) else {
+            throw LibraryCommandError.message("Could not open Prompt Paster preferences.")
+        }
+        return defaults
     }
 
     private static func requireNoArguments(_ args: [String]) throws {

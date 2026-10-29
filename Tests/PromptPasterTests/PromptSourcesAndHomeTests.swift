@@ -129,6 +129,14 @@ final class PromptSourcesAndHomeTests: XCTestCase {
         XCTAssertFalse(store.isRefreshingSources)
     }
 
+    func testInstalledCLIPreferencesUseTheExistingAppDomainWithoutAddingOwnSuite() throws {
+        let installed = try LibraryCommandLine.appDefaults(bundleIdentifier: "com.shaypal5.prompt-paster")
+        XCTAssertTrue(installed === UserDefaults.standard)
+        // The unbundled SwiftPM binary must still be able to address the app's domain.
+        let development = try LibraryCommandLine.appDefaults(bundleIdentifier: nil)
+        XCTAssertFalse(development === UserDefaults.standard)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("PromptPasterSourceTests-\(UUID().uuidString)", isDirectory: true)
