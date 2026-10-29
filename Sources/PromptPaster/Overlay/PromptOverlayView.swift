@@ -67,6 +67,11 @@ struct PromptOverlayView: View {
         }
     }
 
+    /// The same ordered cards drive keyboard navigation, copying, and rendering.
+    private var selectablePrompts: [Prompt] {
+        isHomeScreen ? homePrompts.map(\.prompt) : visiblePrompts
+    }
+
     private var actions: PromptOverlayActions {
         PromptOverlayActions(
             clipboard: clipboard,
@@ -78,7 +83,7 @@ struct PromptOverlayView: View {
 
     private var shouldShowPromptShortcutBadges: Bool {
         if isHomeScreen {
-            return !isSearchFocused
+            return !isSearchFocused && !isEditingHome
         }
         switch settingsStore.promptSelectionShortcutMode {
         case .spatialLetters:
@@ -159,6 +164,9 @@ struct PromptOverlayView: View {
             let configuredIDs = promptStore.library?.configuredPromptIDs ?? []
             promptUsageStore.pruneKeepingPromptIDs(configuredIDs)
             settingsStore.pruneHomePrompts(keepingPromptIDs: configuredIDs)
+        }
+        .onChange(of: settingsStore.homePromptSlots) { _, _ in
+            keepSelectionVisible()
         }
         .onChange(of: settingsStore.promptOrderingMode) { _, _ in
             keepSelectionVisible()
@@ -394,6 +402,14 @@ struct PromptOverlayView: View {
             return false
         }
 
+        if isEditingHome {
+            if event.keyCode == 53 {
+                isEditingHome = false
+                return true
+            }
+            return false
+        }
+
         switch event.keyCode {
         case 53:
             close()
@@ -431,13 +447,7 @@ struct PromptOverlayView: View {
             return false
         }
 
-        let assignments = PromptOverlayState.shortcutAssignments(
-            for: visiblePrompts,
-            availableColumns: promptGridColumnCount,
-            previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
-            mode: settingsStore.promptSelectionShortcutMode
-        )
-        guard let promptID = PromptOverlayState.promptIDForShortcut(key, assignments: assignments) else {
+        guard let promptID = OverlayShortcutKey.promptID(for: event, assignments: promptShortcutAssignments) else {
             return false
         }
 
@@ -455,7 +465,7 @@ struct PromptOverlayView: View {
         isSearchFocused = false
         selectedPromptID = PromptOverlayState.selectedPromptIDMoving(
             currentID: selectedPromptID,
-            visiblePrompts: visiblePrompts,
+            visiblePrompts: selectablePrompts,
             offset: offset
         )
         copyStatusMessage = nil
@@ -465,7 +475,7 @@ struct PromptOverlayView: View {
         isSearchFocused = false
         selectedPromptID = PromptOverlayState.selectedPromptIDMovingVertically(
             currentID: selectedPromptID,
-            visiblePrompts: visiblePrompts,
+            visiblePrompts: selectablePrompts,
             availableColumns: promptGridColumnCount,
             previewCharacterLimit: settingsStore.promptPreviewCharacterLimit,
             direction: direction
@@ -483,14 +493,14 @@ struct PromptOverlayView: View {
     private func keepSelectionVisible() {
         selectedPromptID = PromptOverlayState.selectedPromptIDKeepingVisible(
             currentID: selectedPromptID,
-            visiblePrompts: visiblePrompts
+            visiblePrompts: selectablePrompts
         )
     }
 
     private func selectCurrentPrompt() {
         guard let outcome = actions.selectCurrentPrompt(
             selectedPromptID: selectedPromptID,
-            visiblePrompts: visiblePrompts
+            visiblePrompts: selectablePrompts
         ) else {
             return
         }
@@ -498,8 +508,8 @@ struct PromptOverlayView: View {
         apply(outcome)
     }
 
-    private func selectPrompt(at index: Int, from selectablePrompts: [Prompt]? = nil) {
-        guard let outcome = actions.selectPrompt(at: index, visiblePrompts: selectablePrompts ?? visiblePrompts) else {
+    private func selectPrompt(at index: Int, from displayedPrompts: [Prompt]? = nil) {
+        guard let outcome = actions.selectPrompt(at: index, visiblePrompts: displayedPrompts ?? selectablePrompts) else {
             return
         }
 
@@ -507,7 +517,7 @@ struct PromptOverlayView: View {
     }
 
     private func selectPrompt(withID promptID: Prompt.ID) {
-        guard let index = visiblePrompts.firstIndex(where: { $0.id == promptID }) else {
+        guard let index = selectablePrompts.firstIndex(where: { $0.id == promptID }) else {
             return
         }
 

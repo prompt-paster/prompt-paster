@@ -16,7 +16,7 @@ Created by [Shay Palachy Affek](http://www.shaypalachy.com/).
 
 ## Current Status
 
-The v0.3.1 download targets Apple silicon on macOS 14 or newer and is signed
+The v0.3.2 download targets Apple silicon on macOS 14 or newer and is signed
 with Developer ID and notarized by Apple.
 
 The repository currently contains a native menu-bar utility with the core v1
@@ -97,7 +97,7 @@ scripts/build-dmg.sh
 The script creates:
 
 ```text
-dist/PromptPaster-0.3.1.dmg
+dist/PromptPaster-0.3.2.dmg
 ```
 
 The DMG contains:
@@ -111,14 +111,14 @@ README.txt
 To validate an existing artifact:
 
 ```bash
-scripts/validate-release-package.sh dist/PromptPaster-0.3.1.dmg
+scripts/validate-release-package.sh dist/PromptPaster-0.3.2.dmg
 ```
 
 To also launch an installed-style copy of the app from the artifact and then
 terminate it:
 
 ```bash
-scripts/validate-release-package.sh dist/PromptPaster-0.3.1.dmg --launch-smoke
+scripts/validate-release-package.sh dist/PromptPaster-0.3.2.dmg --launch-smoke
 ```
 
 ## Signing and Notarization
@@ -189,7 +189,7 @@ DMG on a GitHub-hosted macOS runner, uploads the DMG as a workflow artifact, and
 creates or updates a GitHub Release with the DMG attached.
 
 The workflow uploads both a versioned artifact, such as
-`PromptPaster-0.3.1.dmg`, and a stable `PromptPaster.dmg` alias. The stable
+`PromptPaster-0.3.2.dmg`, and a stable `PromptPaster.dmg` alias. The stable
 asset keeps the website download URL version-independent:
 
 ```text
