@@ -139,7 +139,7 @@ struct SettingsView: View {
 
             Section("Overlay Display") {
                 Toggle("Show favorites home when opening Prompt Paster", isOn: $settingsStore.homeScreenEnabled)
-                Text("When enabled, an empty overlay shows your starred prompts. Start typing to switch to dynamic search results.")
+                Text("When enabled, an empty overlay shows your starred prompts (up to \(PromptHomeConfiguration.maximumPromptCount)). Start typing to switch to dynamic search results.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 

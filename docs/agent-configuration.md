@@ -134,7 +134,7 @@ agents continue maintaining those owning repositories; Prompt Paster follows
 their committed output.
 
 `favorites ID ...` appends missing IDs without disturbing existing slots, enables
-the home screen, and fails before changing settings if its eight slots are full.
+the home screen, and fails before changing settings if its sixteen slots are full.
 It operates only on the default installed library. An optional local symlink to
 the bundled executable can give agents a shorter command; the app does not
 install privileged helpers.

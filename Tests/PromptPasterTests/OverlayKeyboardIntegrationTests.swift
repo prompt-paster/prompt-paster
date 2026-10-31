@@ -102,6 +102,24 @@ final class OverlayKeyboardIntegrationTests: XCTestCase {
         XCTAssertEqual(OverlayShortcutKey.promptID(for: event, assignments: []), nil)
     }
 
+    func testNinthHomeFavoriteCopiesWithHebrewPhysicalLAndKeepsPreviousEight() throws {
+        let extra = (1...5).map { Prompt(id: "extra-\($0)", title: "Extra \($0)", body: "Extra body") }
+            + [Prompt(id: "base-only", title: "Base only", body: "Base prompt without a suffix")]
+        let fixture = try Fixture(additionalPrompts: extra)
+        defer { fixture.cleanUp() }
+        for index in 1...5 { fixture.settings.toggleFavorite(promptID: "extra-\(index)") }
+        let oldSlots = fixture.settings.homePromptSlots
+        XCTAssertEqual(oldSlots.count, 8)
+        fixture.settings.toggleFavorite(promptID: "base-only")
+        XCTAssertEqual(Array(fixture.settings.homePromptSlots.prefix(8)), oldSlots)
+        XCTAssertEqual(fixture.settings.homePromptSlots.last?.key, "l")
+        fixture.controller.show()
+        pumpEvents()
+        sendKey("ך", code: 37, modifiers: [], window: try XCTUnwrap(NSApp.keyWindow))
+        XCTAssertEqual(fixture.clipboard.copiedTexts, ["Base prompt without a suffix"])
+        XCTAssertFalse(fixture.controller.isVisible)
+    }
+
     private func textFields(in view: NSView) -> [NSTextField] {
         (view as? NSTextField).map { [$0] } ?? view.subviews.flatMap { textFields(in: $0) }
     }
@@ -136,7 +154,7 @@ private final class Fixture {
     let clipboard = KeyboardTestClipboard()
     let controller: OverlayWindowController
 
-    init() throws {
+    init(additionalPrompts: [Prompt] = []) throws {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.accessory)
         NSApp.finishLaunching()
@@ -146,7 +164,7 @@ private final class Fixture {
         let defaults = UserDefaults(suiteName: suite)!
         settings = SettingsStore(defaults: defaults, loginItemManager: KeyboardTestLoginManager())
         let prompts = [Prompt(id: "hidden", title: "Not on home", body: "Do not copy the hidden local prompt")] +
-            ["datahack", "adanim", "opeongo"].map { Prompt(id: $0, title: $0.capitalized, body: "Complete \($0)\nSecond paragraph") }
+            ["datahack", "adanim", "opeongo"].map { Prompt(id: $0, title: $0.capitalized, body: "Complete \($0)\nSecond paragraph") } + additionalPrompts
         let seed = folder.appendingPathComponent("seed.json")
         try PromptLibraryCoding.makeEncoder().encode(PromptLibrary(prompts: prompts)).write(to: seed)
         let store = PromptStore(applicationSupportURL: folder.appendingPathComponent("Support"), seedURL: seed)
