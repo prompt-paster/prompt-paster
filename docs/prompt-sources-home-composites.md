@@ -35,7 +35,7 @@ prompt IDs is unavailable. This prevents copying an incomplete composition.
 
 - The home screen is enabled by default and appears when the overlay opens with
   an empty query.
-- Starring a card adds it to home (up to eight prompts) with an initial key from
+- Starring a card adds it to home (up to sixteen prompts) with an initial key from
   `A S D F G H J K`.
 - The pencil in the overlay switches home into edit mode. Cards can be dragged
   to reorder them, and their one-letter keys can be changed in place.

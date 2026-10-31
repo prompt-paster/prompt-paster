@@ -106,7 +106,7 @@ enum LibraryCommandLine {
                 let settings = SettingsStore(defaults: defaults)
                 let additional = Set(args).subtracting(settings.homePromptSlots.map(\.promptID))
                 guard additional.count + settings.homePromptSlots.count <= PromptHomeConfiguration.maximumPromptCount else {
-                    throw LibraryCommandError.message("Home is full. Remove a favorite in Settings before adding more.")
+                    throw LibraryCommandError.message("Home has reached its limit of \(PromptHomeConfiguration.maximumPromptCount) favorites. Remove a favorite in Settings before adding more.")
                 }
                 for id in args where !settings.isFavorite(promptID: id) { settings.toggleFavorite(promptID: id) }
                 settings.homeScreenEnabled = true

@@ -137,6 +137,28 @@ final class PromptSourcesAndHomeTests: XCTestCase {
         XCTAssertFalse(development === UserDefaults.standard)
     }
 
+    func testAddingNinthFavoritePreservesLegacyOrderAndPersistsAllSixteenUniqueKeys() throws {
+        let suite = "PromptPasterCapacity.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let oldKeys = ["a", "d", "f", "g", "j", "k", "s", "h"]
+        let oldSlots = oldKeys.enumerated().map { PromptHomeSlot(promptID: "legacy-\($0.offset)", key: $0.element) }
+        defaults.set(try JSONEncoder().encode(oldSlots), forKey: "settings.homePromptSlots")
+        let store = SettingsStore(defaults: defaults, loginItemManager: HomeTestLoginItemManager())
+        XCTAssertEqual(store.homePromptSlots, oldSlots)
+        store.toggleFavorite(promptID: "base-only")
+        XCTAssertEqual(Array(store.homePromptSlots.prefix(8)), oldSlots)
+        XCTAssertEqual(store.homePromptSlots.last, PromptHomeSlot(promptID: "base-only", key: "l"))
+        for index in 10...16 { store.toggleFavorite(promptID: "new-\(index)") }
+        XCTAssertEqual(store.homePromptSlots.count, 16)
+        XCTAssertEqual(Set(store.homePromptSlots.map(\.key)).count, 16)
+        let fullSlots = store.homePromptSlots
+        store.toggleFavorite(promptID: "overflow")
+        XCTAssertEqual(store.homePromptSlots, fullSlots)
+        let reloaded = SettingsStore(defaults: defaults, loginItemManager: HomeTestLoginItemManager())
+        XCTAssertEqual(reloaded.homePromptSlots, fullSlots)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("PromptPasterSourceTests-\(UUID().uuidString)", isDirectory: true)

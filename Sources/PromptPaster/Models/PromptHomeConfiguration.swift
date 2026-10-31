@@ -8,8 +8,8 @@ struct PromptHomeSlot: Codable, Equatable, Identifiable {
 }
 
 enum PromptHomeConfiguration {
-    static let maximumPromptCount = 8
-    static let defaultKeys = ["a", "s", "d", "f", "g", "h", "j", "k"]
+    static let defaultKeys = ["a", "s", "d", "f", "g", "h", "j", "k", "l", "q", "w", "e", "r", "t", "y", "u"]
+    static let maximumPromptCount = defaultKeys.count
 
     static func normalizedSlots(_ slots: [PromptHomeSlot]) -> [PromptHomeSlot] {
         var usedPromptIDs = Set<String>()
